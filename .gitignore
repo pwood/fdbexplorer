@@ -1,0 +1,5 @@
+# Ignore IDEA project files.
+.idea
+*.iml
+middleauth
+middleauth.exe
