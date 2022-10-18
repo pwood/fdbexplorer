@@ -17,6 +17,7 @@ type Process struct {
 	CPU      CPU      `json:"cpu"`
 	Disk     Disk     `json:"disk"`
 	Memory   Memory   `json:"memory"`
+	Network  Network  `json:"network"`
 }
 
 type Locality struct {
@@ -33,10 +34,21 @@ type CPU struct {
 	UsageCores float64 `json:"usage_cores"`
 }
 
+type Hz struct {
+	Hz float64 `json:"hz"`
+}
+
 type Disk struct {
 	Busy       float64 `json:"busy"`
 	FreeBytes  int     `json:"free_bytes"`
 	TotalBytes int     `json:"total_bytes"`
+	Reads      Hz      `json:"reads"`
+	Writes     Hz      `json:"writes"`
+}
+
+type Network struct {
+	MegabitsSent     Hz `json:"megabits_sent"`
+	MegabitsReceived Hz `json:"megabits_received"`
 }
 
 type Memory struct {

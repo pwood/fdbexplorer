@@ -24,9 +24,9 @@ func main() {
 	defer close(stateCh)
 
 	if len(*inputFile) > 0 {
-		go handleDataLocal(stateCh, *inputFile)
+		go handleDataFile(stateCh, *inputFile)
 	} else {
-		go handleDataRemote(stateCh, *clusterFile, *interval)
+		go handleDataFDB(stateCh, *clusterFile, *interval)
 	}
 
 	v := View{ch: stateCh}
