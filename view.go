@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gdamore/tcell/v2"
 	"github.com/pwood/fdbexplorer/statusjson"
 	"github.com/rivo/tview"
+	"strconv"
 	"sync"
 )
 
@@ -30,12 +32,6 @@ func (v *View) runData() {
 func (v *View) run() {
 	v.pd = &ProcessData{m: &sync.RWMutex{}, sortBy: SortIPAddress}
 
-	newPrimitive := func(text string) tview.Primitive {
-		return tview.NewTextView().
-			SetTextAlign(tview.AlignCenter).
-			SetText(text)
-	}
-
 	pages := tview.NewPages()
 
 	locality := tview.NewTable().SetContent(&ProcessView{
@@ -44,7 +40,7 @@ func (v *View) run() {
 	})
 	locality.SetFixed(1, 0)
 	locality.SetSelectable(true, false)
-	pages.AddPage("locality", locality, true, true)
+	pages.AddPage("0", locality, true, true)
 
 	usage := tview.NewTable().SetContent(&ProcessView{
 		pd:      v.pd,
@@ -52,41 +48,65 @@ func (v *View) run() {
 	})
 	usage.SetFixed(1, 0)
 	usage.SetSelectable(true, false)
-	pages.AddPage("usage", usage, true, false)
+	pages.AddPage("1", usage, true, false)
 
-	pageIndex := []string{"locality", "usage"}
-	pageNow := 0
+	pageIndex := []string{"Locality", "Usage"}
 
-	pages.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Key() {
-		case tcell.KeyLeft:
-			pageNow--
-			if pageNow < 0 {
-				pageNow = len(pageIndex) - 1
-			}
-		case tcell.KeyRight:
-			pageNow++
-			if pageNow >= len(pageIndex) {
-				pageNow = 0
-			}
-		default:
-			return event
-		}
+	info := tview.NewTextView().
+		SetDynamicColors(true).
+		SetRegions(true).
+		SetWrap(false).
+		SetTextAlign(tview.AlignCenter).
+		SetHighlightedFunc(func(added, removed, remaining []string) {
+			pages.SwitchToPage(added[0])
+		})
 
-		pages.SwitchToPage(pageIndex[pageNow])
-		return nil
-	})
+	// Create the pages for all slides.
+	previousSlide := func() {
+		slide, _ := strconv.Atoi(info.GetHighlights()[0])
+		slide = (slide - 1 + len(pageIndex)) % len(pageIndex)
+		info.Highlight(strconv.Itoa(slide)).ScrollToHighlight()
+	}
+	nextSlide := func() {
+		slide, _ := strconv.Atoi(info.GetHighlights()[0])
+		slide = (slide + 1) % len(pageIndex)
+		info.Highlight(strconv.Itoa(slide)).ScrollToHighlight()
+	}
 
-	grid := tview.NewGrid().SetRows(5, 0).SetColumns(0, 0, 0).SetBorders(true)
-	grid.AddItem(newPrimitive("Header"), 0, 0, 1, 2, 0, 0, false)
-	grid.AddItem(newPrimitive("Stats"), 0, 2, 1, 1, 0, 0, false)
-	grid.AddItem(pages, 1, 0, 1, 3, 0, 0, true)
+	for index, title := range pageIndex {
+		_, _ = fmt.Fprintf(info, `%d ["%d"][yellow]%s[white][""]  `, index+1, index, title)
+	}
+
+	info.Highlight("0")
+
+	help := tview.NewTextView().
+		SetDynamicColors(true).
+		SetRegions(true).
+		SetWrap(false).
+		SetTextAlign(tview.AlignLeft)
+
+	_, _ = fmt.Fprintf(help, ` F1 [black:darkcyan]Sort[:-] `)
+
+	grid := tview.NewGrid().SetRows(5, 1, 0, 1).SetColumns(0, 0, 0).SetBorders(true)
+	grid.AddItem(tview.NewTextView().
+		SetTextAlign(tview.AlignCenter).
+		SetText("Header"), 0, 0, 1, 2, 0, 0, false)
+	grid.AddItem(tview.NewTextView().
+		SetTextAlign(tview.AlignCenter).
+		SetText("Stats"), 0, 2, 1, 1, 0, 0, false)
+	grid.AddItem(info, 1, 0, 1, 3, 0, 0, false)
+	grid.AddItem(pages, 2, 0, 1, 3, 0, 0, true)
+	grid.AddItem(help, 3, 0, 1, 3, 0, 0, false)
 
 	sortIndex := []SortKey{SortIPAddress, SortRole, SortClass}
 	sortNow := 0
 
 	grid.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
+		case tcell.KeyLeft:
+			previousSlide()
+		case tcell.KeyRight:
+			nextSlide()
 		case tcell.KeyF1:
 			sortNow++
 			if sortNow >= len(sortIndex) {
@@ -97,8 +117,6 @@ func (v *View) run() {
 		default:
 			return event
 		}
-
-		pages.SwitchToPage(pageIndex[pageNow])
 		return nil
 	})
 
