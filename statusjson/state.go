@@ -5,21 +5,89 @@ type Root struct {
 }
 
 type Cluster struct {
-	Processes map[string]Process `json:"processes"`
+	Processes         map[string]Process `json:"processes"`
+	DatabaseAvailable bool               `json:"database_available"`
+	Workload          Workload           `json:"workload"`
+	Messages          []Message          `json:"messages"`
+	RecoveryState     RecoveryState      `json:"recovery_state"`
 }
 
+type RecoveryState struct {
+	Name string `json:"name"`
+}
+
+type Workload struct {
+	Transactions Transactions `json:"transactions"`
+	Operations   Operations   `json:"operations"`
+	Bytes        Bytes        `json:"bytes"`
+}
+
+type Operations struct {
+	Reads  Stats `json:"reads"`
+	Writes Stats `json:"writes"`
+}
+
+type Transactions struct {
+	Committed                Stats `json:"committed"`
+	Conflicted               Stats `json:"conflicted"`
+	RejectedForQueuedTooLong Stats `json:"rejected_for_queued_too_long"`
+	Started                  Stats `json:"started"`
+}
+
+type Bytes struct {
+	Read    Stats `json:"read"`
+	Written Stats `json:"written"`
+}
+
+type Health int
+
+const (
+	HealthCritical Health = iota
+	HealthWarning
+	HealthNormal
+	HealthExcluded
+)
+
 type Process struct {
-	Address  string   `json:"address"`
-	Excluded bool     `json:"excluded"`
-	Locality Locality `json:"locality"`
-	Class    string   `json:"class_type"`
-	Roles    []Role   `json:"roles"`
-	CPU      CPU      `json:"cpu"`
-	Disk     Disk     `json:"disk"`
-	Memory   Memory   `json:"memory"`
-	Network  Network  `json:"network"`
-	Uptime   float64  `json:"uptime_seconds"`
-	Version  string   `json:"version"`
+	Health           Health    `json:"-"`
+	Address          string    `json:"address"`
+	Degraded         bool      `json:"degraded"`
+	Excluded         bool      `json:"excluded"`
+	Locality         Locality  `json:"locality"`
+	Class            string    `json:"class_type"`
+	CommandLine      string    `json:"command_line"`
+	Roles            []Role    `json:"roles"`
+	CPU              CPU       `json:"cpu"`
+	Disk             Disk      `json:"disk"`
+	Memory           Memory    `json:"memory"`
+	Network          Network   `json:"network"`
+	Uptime           float64   `json:"uptime_seconds"`
+	Version          string    `json:"version"`
+	UnderMaintenance bool      `json:"under_maintenance"`
+	Messages         []Message `json:"messages"`
+}
+
+func CalculateProcessHealth(p Process) Process {
+	p.Health = HealthNormal
+
+	if p.Excluded || p.UnderMaintenance {
+		p.Health = HealthExcluded
+	}
+
+	if len(p.Messages) > 0 {
+		p.Health = HealthWarning
+	}
+
+	if p.Degraded {
+		p.Health = HealthCritical
+	}
+
+	return p
+}
+
+type Message struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
 type Locality struct {

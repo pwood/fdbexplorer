@@ -13,28 +13,24 @@ type View struct {
 	ch  chan State
 	app *tview.Application
 
-	pd *ProcessData
+	cd *ClusterData
 }
 
 func (v *View) runData() {
 	for s := range v.ch {
-		var processes []statusjson.Process
-
-		for _, process := range s.ClusterState.Cluster.Processes {
-			processes = append(processes, process)
-		}
-
-		v.pd.Update(processes)
+		v.cd.Update(s.ClusterState)
 		v.app.Draw()
 	}
 }
 
 func (v *View) run() {
-	v.pd = &ProcessData{m: &sync.RWMutex{}, sortBy: SortIPAddress, views: map[string][]statusjson.Process{}, viewFns: map[string]func(statusjson.Process) bool{}}
+	v.cd = &ClusterData{m: &sync.RWMutex{}, sortBy: SortIPAddress, views: map[string][]statusjson.Process{}, viewFns: map[string]func(statusjson.Process) bool{}}
+	clusterStatsContent := &ClusterStateTableContent{cd: v.cd}
 
 	pages := tview.NewPages()
+	pages.SetBorderPadding(0, 0, 1, 1)
 
-	allView := v.pd.View("all", All)
+	allView := v.cd.View("all", All)
 
 	locality := tview.NewTable().SetContent(&ProcessTableContent{
 		pv:      allView,
@@ -53,7 +49,7 @@ func (v *View) run() {
 	pages.AddPage("1", usage, true, false)
 
 	storage := tview.NewTable().SetContent(&ProcessTableContent{
-		pv:      v.pd.View("storage", RoleMatch("storage")),
+		pv:      v.cd.View("storage", RoleMatch("storage")),
 		columns: []ColumnId{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnKVStorage, ColumnDurabilityRate, ColumnStorageLag, ColumnTotalQueries},
 	})
 	storage.SetFixed(1, 0)
@@ -61,7 +57,7 @@ func (v *View) run() {
 	pages.AddPage("2", storage, true, false)
 
 	logs := tview.NewTable().SetContent(&ProcessTableContent{
-		pv:      v.pd.View("log", RoleMatch("log")),
+		pv:      v.cd.View("log", RoleMatch("log")),
 		columns: []ColumnId{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnQueueStorage, ColumnDurabilityRate},
 	})
 	logs.SetFixed(1, 0)
@@ -105,13 +101,20 @@ func (v *View) run() {
 
 	_, _ = fmt.Fprintf(help, ` F1 [black:darkcyan]Sort[:-] `)
 
+	statsFlex := tview.NewFlex()
+	statsFlex.SetDirection(tview.FlexRow)
+	statsFlex.SetBorderPadding(0, 0, 1, 1)
+	statsFlex.AddItem(tview.NewTextView().SetTextAlign(tview.AlignCenter).SetText("Cluster Workload").SetTextColor(tcell.ColorAqua), 1, 1, false)
+	statsFlex.AddItem(tview.NewTable().SetContent(clusterStatsContent).SetSelectable(false, false), 0, 1, false)
+
+	clusterInfoFlex := tview.NewFlex()
+	clusterInfoFlex.SetDirection(tview.FlexRow)
+	clusterInfoFlex.SetBorderPadding(0, 0, 1, 1)
+	clusterInfoFlex.AddItem(tview.NewTextView().SetTextAlign(tview.AlignCenter).SetText("Cluster Info").SetTextColor(tcell.ColorAqua), 1, 1, false)
+
 	grid := tview.NewGrid().SetRows(5, 1, 0, 1).SetColumns(0, 0, 0).SetBorders(true)
-	grid.AddItem(tview.NewTextView().
-		SetTextAlign(tview.AlignCenter).
-		SetText("Header"), 0, 0, 1, 2, 0, 0, false)
-	grid.AddItem(tview.NewTextView().
-		SetTextAlign(tview.AlignCenter).
-		SetText("Stats"), 0, 2, 1, 1, 0, 0, false)
+	grid.AddItem(clusterInfoFlex, 0, 0, 1, 2, 0, 0, false)
+	grid.AddItem(statsFlex, 0, 2, 1, 1, 0, 0, false)
 	grid.AddItem(info, 1, 0, 1, 3, 0, 0, false)
 	grid.AddItem(pages, 2, 0, 1, 3, 0, 0, true)
 	grid.AddItem(help, 3, 0, 1, 3, 0, 0, false)
@@ -131,7 +134,7 @@ func (v *View) run() {
 				sortNow = 0
 			}
 
-			v.pd.Sort(sortIndex[sortNow])
+			v.cd.Sort(sortIndex[sortNow])
 		default:
 			return event
 		}

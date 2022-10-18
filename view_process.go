@@ -19,7 +19,21 @@ const (
 	SortRole
 )
 
-type ProcessData struct {
+type ClusterStats struct {
+	TxStarted    float64
+	TxCommitted  float64
+	TxConflicted float64
+	TxRejected   float64
+
+	Reads        float64
+	Writes       float64
+	BytesRead    float64
+	BytesWritten float64
+}
+
+type ClusterData struct {
+	root statusjson.Root
+
 	processes []statusjson.Process
 	views     map[string][]statusjson.Process
 	viewFns   map[string]func(statusjson.Process) bool
@@ -29,58 +43,67 @@ type ProcessData struct {
 	m *sync.RWMutex
 }
 
-func (p *ProcessData) Sort(sortKey SortKey) {
-	p.m.Lock()
-	defer p.m.Unlock()
+func (c *ClusterData) Sort(sortKey SortKey) {
+	c.m.Lock()
+	defer c.m.Unlock()
 
-	p.sortBy = sortKey
-	p._filterAndSort()
+	c.sortBy = sortKey
+	c._filterAndSort()
 }
 
-func (p *ProcessData) Update(processes []statusjson.Process) {
-	p.m.Lock()
-	defer p.m.Unlock()
+func (c *ClusterData) Update(s statusjson.Root) {
+	c.m.Lock()
+	defer c.m.Unlock()
 
-	p.processes = processes
-	p._filterAndSort()
+	c.processes = nil
+
+	for _, process := range s.Cluster.Processes {
+		c.processes = append(c.processes, process)
+	}
+
+	c._filterAndSort()
 }
 
-func (p *ProcessData) _filterAndSort() {
-	switch p.sortBy {
+func (c *ClusterData) _filterAndSort() {
+	switch c.sortBy {
 	case SortIPAddress:
-		sort.Slice(p.processes, func(i, j int) bool {
-			return strings.Compare(p.processes[i].Address, p.processes[j].Address) < 0
+		sort.Slice(c.processes, func(i, j int) bool {
+			return strings.Compare(c.processes[i].Address, c.processes[j].Address) < 0
 		})
 	case SortClass:
-		sort.Slice(p.processes, func(i, j int) bool {
-			return strings.Compare(p.processes[i].Class+p.processes[i].Address, p.processes[j].Class+p.processes[j].Address) < 0
+		sort.Slice(c.processes, func(i, j int) bool {
+			return strings.Compare(c.processes[i].Class+c.processes[i].Address, c.processes[j].Class+c.processes[j].Address) < 0
 		})
 	case SortRole:
-		sort.Slice(p.processes, func(i, j int) bool {
+		sort.Slice(c.processes, func(i, j int) bool {
 			iRole := ""
-			if len(p.processes[i].Roles) > 0 {
-				iRole = p.processes[i].Roles[0].Role
+			if len(c.processes[i].Roles) > 0 {
+				iRole = c.processes[i].Roles[0].Role
 			}
 
 			jRole := ""
-			if len(p.processes[j].Roles) > 0 {
-				jRole = p.processes[j].Roles[0].Role
+			if len(c.processes[j].Roles) > 0 {
+				jRole = c.processes[j].Roles[0].Role
 			}
 
-			return strings.Compare(iRole+p.processes[i].Address, jRole+p.processes[j].Address) < 0
+			return strings.Compare(iRole+c.processes[i].Address, jRole+c.processes[j].Address) < 0
 		})
 	}
 
-	for n, fn := range p.viewFns {
+	for i, proc := range c.processes {
+		c.processes[i] = statusjson.CalculateProcessHealth(proc)
+	}
+
+	for n, fn := range c.viewFns {
 		var viewProcesses []statusjson.Process
 
-		for _, p := range p.processes {
+		for _, p := range c.processes {
 			if fn(p) {
 				viewProcesses = append(viewProcesses, p)
 			}
 		}
 
-		p.views[n] = viewProcesses
+		c.views[n] = viewProcesses
 	}
 }
 
@@ -99,18 +122,34 @@ func RoleMatch(s string) func(statusjson.Process) bool {
 	}
 }
 
-func (p *ProcessData) View(name string, fn func(statusjson.Process) bool) *ProcessView {
-	p.views[name] = nil
-	p.viewFns[name] = fn
+func (c *ClusterData) View(name string, fn func(statusjson.Process) bool) *ProcessView {
+	c.views[name] = nil
+	c.viewFns[name] = fn
 
 	return &ProcessView{
-		pd: p,
+		pd: c,
 		n:  name,
 	}
 }
 
+func (c *ClusterData) Stats() ClusterStats {
+	c.m.RLock()
+	defer c.m.RUnlock()
+
+	return ClusterStats{
+		TxStarted:    c.root.Cluster.Workload.Transactions.Started.Hz,
+		TxCommitted:  c.root.Cluster.Workload.Transactions.Committed.Hz,
+		TxConflicted: c.root.Cluster.Workload.Transactions.Conflicted.Hz,
+		TxRejected:   c.root.Cluster.Workload.Transactions.RejectedForQueuedTooLong.Hz,
+		Reads:        c.root.Cluster.Workload.Operations.Reads.Hz,
+		Writes:       c.root.Cluster.Workload.Operations.Writes.Hz,
+		BytesRead:    c.root.Cluster.Workload.Bytes.Read.Hz,
+		BytesWritten: c.root.Cluster.Workload.Bytes.Written.Hz,
+	}
+}
+
 type ProcessView struct {
-	pd *ProcessData
+	pd *ClusterData
 	n  string
 }
 
@@ -141,7 +180,19 @@ func (v *ProcessTableContent) GetCell(row, column int) *tview.TableCell {
 	if row == 0 {
 		return tview.NewTableCell(columns[cid].Name).SetExpansion(1).SetTextColor(tcell.ColorAqua).SetSelectable(false)
 	} else {
-		return tview.NewTableCell(columns[cid].DataFn(v.pv.Get(row - 1)))
+		process := v.pv.Get(row - 1)
+		color := tcell.ColorWhite
+
+		switch process.Health {
+		case statusjson.HealthCritical:
+			color = tcell.ColorRed
+		case statusjson.HealthWarning:
+			color = tcell.ColorYellow
+		case statusjson.HealthExcluded:
+			color = tcell.ColorBlue
+		}
+
+		return tview.NewTableCell(columns[cid].DataFn(process)).SetTextColor(color)
 	}
 }
 
@@ -191,11 +242,25 @@ var columns = map[ColumnId]ColumnDef{
 	ColumnStatus: {
 		Name: "Status",
 		DataFn: func(process statusjson.Process) string {
+			var statuses []string
+
 			if process.Excluded {
-				return "Excluded"
-			} else {
-				return ""
+				statuses = append(statuses, "Excluded")
 			}
+
+			if process.Degraded {
+				statuses = append(statuses, "Degraded")
+			}
+
+			if process.UnderMaintenance {
+				statuses = append(statuses, "Maintenance")
+			}
+
+			if len(process.Messages) > 0 {
+				statuses = append(statuses, "Message")
+			}
+
+			return strings.Join(statuses, " / ")
 		},
 	},
 	ColumnMachine: {
