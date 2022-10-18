@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/pwood/fdbexplorer/statusjson"
+	"os"
 	"time"
 )
 
@@ -15,7 +16,12 @@ type State struct {
 }
 
 func main() {
-	clusterFile := flag.String("cluster-file", "/etc/foundationdb/fdb.cluster", "Location of FoundationDB cluster file.")
+	defaultClusterFile, found := os.LookupEnv("FDB_CLUSTER_FILE")
+	if !found {
+		defaultClusterFile = "/etc/foundationdb/fdb.cluster"
+	}
+
+	clusterFile := flag.String("cluster-file", defaultClusterFile, "Location of FoundationDB cluster file.")
 	interval := flag.Duration("interval", 10*time.Second, "Interval for polling FoundationDB for status.")
 	inputFile := flag.String("input-file", "", "Location of an output of 'status json' to explore, will not connect to FoundationDB.")
 
