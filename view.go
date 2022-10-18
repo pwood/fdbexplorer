@@ -54,7 +54,7 @@ func (v *View) run() {
 
 	storage := tview.NewTable().SetContent(&ProcessTableContent{
 		pv:      v.pd.View("storage", RoleMatch("storage")),
-		columns: []ColumnId{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage},
+		columns: []ColumnId{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnKVStorage, ColumnDurabilityRate, ColumnStorageLag, ColumnTotalQueries},
 	})
 	storage.SetFixed(1, 0)
 	storage.SetSelectable(true, false)
@@ -62,7 +62,7 @@ func (v *View) run() {
 
 	logs := tview.NewTable().SetContent(&ProcessTableContent{
 		pv:      v.pd.View("log", RoleMatch("log")),
-		columns: []ColumnId{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage},
+		columns: []ColumnId{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnQueueStorage, ColumnDurabilityRate},
 	})
 	logs.SetFixed(1, 0)
 	logs.SetSelectable(true, false)

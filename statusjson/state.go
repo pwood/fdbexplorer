@@ -30,10 +30,34 @@ type Locality struct {
 
 type Role struct {
 	Role string `json:"role"`
+
+	// Storage Only
+	KVUsedBytes   float64 `json:"kvstore_used_bytes"`
+	TotalQueries  Stats   `json:"total_queries"`
+	DataLag       Lag     `json:"data_lag"`
+	DurabilityLag Lag     `json:"durability_lag"`
+
+	// Log Only
+	QueueUsedBytes float64 `json:"queue_disk_used_bytes"`
+
+	// Both
+	InputBytes   Stats `json:"input_bytes"`
+	DurableBytes Stats `json:"durable_bytes"`
+}
+
+type Lag struct {
+	Seconds  float64 `json:"seconds"`
+	Versions int     `json:"versions"`
 }
 
 type CPU struct {
 	UsageCores float64 `json:"usage_cores"`
+}
+
+type Stats struct {
+	Hz        float64 `json:"hz"`
+	Counter   float64 `json:"counter"`
+	Roughness float64 `json:"roughness"`
 }
 
 type Hz struct {

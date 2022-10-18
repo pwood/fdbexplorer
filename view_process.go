@@ -169,6 +169,11 @@ const (
 	ColumnNetworkActivity
 	ColumnVersion
 	ColumnUptime
+	ColumnKVStorage
+	ColumnQueueStorage
+	ColumnDurabilityRate
+	ColumnStorageLag
+	ColumnTotalQueries
 )
 
 type ColumnDef struct {
@@ -255,7 +260,8 @@ var columns = map[ColumnId]ColumnDef{
 	ColumnDiskActivity: {
 		Name: "Disk Activity",
 		DataFn: func(process statusjson.Process) string {
-			return fmt.Sprintf("%0.1f RPS / %0.1f WPS", process.Disk.Reads.Hz, process.Disk.Writes.Hz)
+			busy := process.Disk.Busy * 100
+			return fmt.Sprintf("%0.1f RPS / %0.1f WPS / %0.1f%%", process.Disk.Reads.Hz, process.Disk.Writes.Hz, busy)
 		},
 	},
 	ColumnNetworkActivity: {
@@ -274,6 +280,41 @@ var columns = map[ColumnId]ColumnDef{
 		Name: "Uptime",
 		DataFn: func(process statusjson.Process) string {
 			return (time.Duration(process.Uptime) * time.Second).String()
+		},
+	},
+	ColumnKVStorage: {
+		Name: "KV Storage",
+		DataFn: func(process statusjson.Process) string {
+			used := float64(process.Roles[0].KVUsedBytes) / 1024 / 1024
+			return fmt.Sprintf("%0.1f MiB", used)
+		},
+	},
+	ColumnQueueStorage: {
+		Name: "Queue Storage",
+		DataFn: func(process statusjson.Process) string {
+			used := float64(process.Roles[0].QueueUsedBytes) / 1024 / 1024
+			return fmt.Sprintf("%0.1f MiB", used)
+		},
+	},
+	ColumnDurabilityRate: {
+		Name: "Input / Durable Rate",
+		DataFn: func(process statusjson.Process) string {
+			input := float64(process.Roles[0].InputBytes.Hz) / 1024 / 1024
+			durable := float64(process.Roles[0].DurableBytes.Hz) / 1024 / 1024
+
+			return fmt.Sprintf("%0.1f MiB/s / %0.1f MiB/s", input, durable)
+		},
+	},
+	ColumnStorageLag: {
+		Name: "Data / Durability Lag",
+		DataFn: func(process statusjson.Process) string {
+			return fmt.Sprintf("%0.1fs / %0.1fs", process.Roles[0].DataLag.Seconds, process.Roles[0].DurabilityLag.Seconds)
+		},
+	},
+	ColumnTotalQueries: {
+		Name: "Queries",
+		DataFn: func(process statusjson.Process) string {
+			return fmt.Sprintf("%0.1f/s", process.Roles[0].TotalQueries.Hz)
 		},
 	},
 }
