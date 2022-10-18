@@ -16,17 +16,13 @@ type View struct {
 
 func (v *View) runData() {
 	for s := range v.ch {
-		v.pd.m.Lock()
-
-		v.pd.processes = []statusjson.Process{}
+		var processes []statusjson.Process
 
 		for _, process := range s.ClusterState.Cluster.Processes {
-			v.pd.processes = append(v.pd.processes, process)
+			processes = append(processes, process)
 		}
 
-		v.pd.Updated()
-
-		v.pd.m.Unlock()
+		v.pd.Update(processes)
 		v.app.Draw()
 	}
 }
@@ -97,10 +93,7 @@ func (v *View) run() {
 				sortNow = 0
 			}
 
-			v.pd.m.Lock()
-			v.pd.sortBy = sortIndex[sortNow]
-			v.pd.Updated()
-			v.pd.m.Unlock()
+			v.pd.Sort(sortIndex[sortNow])
 		default:
 			return event
 		}

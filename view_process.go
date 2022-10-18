@@ -19,15 +19,29 @@ const (
 )
 
 type ProcessData struct {
-	tview.TableContentReadOnly
-
 	processes []statusjson.Process
 	sortBy    SortKey
 
 	m *sync.RWMutex
 }
 
-func (p *ProcessData) Updated() {
+func (p *ProcessData) Sort(sortKey SortKey) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	p.sortBy = sortKey
+	p._filterAndSort()
+}
+
+func (p *ProcessData) Update(processes []statusjson.Process) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	p.processes = processes
+	p._filterAndSort()
+}
+
+func (p *ProcessData) _filterAndSort() {
 	switch p.sortBy {
 	case SortIPAddress:
 		sort.Slice(p.processes, func(i, j int) bool {
