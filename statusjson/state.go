@@ -18,6 +18,8 @@ type Process struct {
 	Disk     Disk     `json:"disk"`
 	Memory   Memory   `json:"memory"`
 	Network  Network  `json:"network"`
+	Uptime   float64  `json:"uptime_seconds"`
+	Version  string   `json:"version"`
 }
 
 type Locality struct {

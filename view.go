@@ -36,7 +36,7 @@ func (v *View) run() {
 
 	locality := tview.NewTable().SetContent(&ProcessView{
 		pd:      v.pd,
-		columns: []ColumnId{ColumnIPAddressPort, ColumnStatus, ColumnMachine, ColumnLocality, ColumnClass, ColumnRoles},
+		columns: []ColumnId{ColumnIPAddressPort, ColumnStatus, ColumnMachine, ColumnLocality, ColumnClass, ColumnRoles, ColumnVersion, ColumnUptime},
 	})
 	locality.SetFixed(1, 0)
 	locality.SetSelectable(true, false)
@@ -50,7 +50,7 @@ func (v *View) run() {
 	usage.SetSelectable(true, false)
 	pages.AddPage("1", usage, true, false)
 
-	pageIndex := []string{"Locality", "Usage"}
+	pageIndex := []string{"Locality", "Usage Overview"}
 
 	info := tview.NewTextView().
 		SetDynamicColors(true).

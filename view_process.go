@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 )
 
 type SortKey int
@@ -113,6 +114,8 @@ const (
 	ColumnDiskUsage
 	ColumnDiskActivity
 	ColumnNetworkActivity
+	ColumnVersion
+	ColumnUptime
 )
 
 type ColumnDef struct {
@@ -206,6 +209,18 @@ var columns = map[ColumnId]ColumnDef{
 		Name: "Network Activity",
 		DataFn: func(process statusjson.Process) string {
 			return fmt.Sprintf("%0.1f Mbps / %0.1f Mbps", process.Network.MegabitsSent.Hz, process.Network.MegabitsReceived.Hz)
+		},
+	},
+	ColumnVersion: {
+		Name: "Version",
+		DataFn: func(process statusjson.Process) string {
+			return process.Version
+		},
+	},
+	ColumnUptime: {
+		Name: "Uptime",
+		DataFn: func(process statusjson.Process) string {
+			return (time.Duration(process.Uptime) * time.Second).String()
 		},
 	},
 }
