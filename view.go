@@ -30,27 +30,45 @@ func (v *View) runData() {
 }
 
 func (v *View) run() {
-	v.pd = &ProcessData{m: &sync.RWMutex{}, sortBy: SortIPAddress}
+	v.pd = &ProcessData{m: &sync.RWMutex{}, sortBy: SortIPAddress, views: map[string][]statusjson.Process{}, viewFns: map[string]func(statusjson.Process) bool{}}
 
 	pages := tview.NewPages()
 
-	locality := tview.NewTable().SetContent(&ProcessView{
-		pd:      v.pd,
+	allView := v.pd.View("all", All)
+
+	locality := tview.NewTable().SetContent(&ProcessTableContent{
+		pv:      allView,
 		columns: []ColumnId{ColumnIPAddressPort, ColumnStatus, ColumnMachine, ColumnLocality, ColumnClass, ColumnRoles, ColumnVersion, ColumnUptime},
 	})
 	locality.SetFixed(1, 0)
 	locality.SetSelectable(true, false)
 	pages.AddPage("0", locality, true, true)
 
-	usage := tview.NewTable().SetContent(&ProcessView{
-		pd:      v.pd,
+	usage := tview.NewTable().SetContent(&ProcessTableContent{
+		pv:      allView,
 		columns: []ColumnId{ColumnIPAddressPort, ColumnRoles, ColumnCPUActivity, ColumnRAMUsage, ColumnNetworkActivity, ColumnDiskUsage, ColumnDiskActivity},
 	})
 	usage.SetFixed(1, 0)
 	usage.SetSelectable(true, false)
 	pages.AddPage("1", usage, true, false)
 
-	pageIndex := []string{"Locality", "Usage Overview"}
+	storage := tview.NewTable().SetContent(&ProcessTableContent{
+		pv:      v.pd.View("storage", RoleMatch("storage")),
+		columns: []ColumnId{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage},
+	})
+	storage.SetFixed(1, 0)
+	storage.SetSelectable(true, false)
+	pages.AddPage("2", storage, true, false)
+
+	logs := tview.NewTable().SetContent(&ProcessTableContent{
+		pv:      v.pd.View("log", RoleMatch("log")),
+		columns: []ColumnId{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage},
+	})
+	logs.SetFixed(1, 0)
+	logs.SetSelectable(true, false)
+	pages.AddPage("3", logs, true, false)
+
+	pageIndex := []string{"Locality", "Usage Overview", "Storage Processes", "Log Processes"}
 
 	info := tview.NewTextView().
 		SetDynamicColors(true).

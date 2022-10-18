@@ -21,7 +21,10 @@ const (
 
 type ProcessData struct {
 	processes []statusjson.Process
-	sortBy    SortKey
+	views     map[string][]statusjson.Process
+	viewFns   map[string]func(statusjson.Process) bool
+
+	sortBy SortKey
 
 	m *sync.RWMutex
 }
@@ -67,36 +70,86 @@ func (p *ProcessData) _filterAndSort() {
 			return strings.Compare(iRole+p.processes[i].Address, jRole+p.processes[j].Address) < 0
 		})
 	}
+
+	for n, fn := range p.viewFns {
+		var viewProcesses []statusjson.Process
+
+		for _, p := range p.processes {
+			if fn(p) {
+				viewProcesses = append(viewProcesses, p)
+			}
+		}
+
+		p.views[n] = viewProcesses
+	}
+}
+
+func All(_ statusjson.Process) bool {
+	return true
+}
+
+func RoleMatch(s string) func(statusjson.Process) bool {
+	return func(process statusjson.Process) bool {
+		for _, r := range process.Roles {
+			if r.Role == s {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+func (p *ProcessData) View(name string, fn func(statusjson.Process) bool) *ProcessView {
+	p.views[name] = nil
+	p.viewFns[name] = fn
+
+	return &ProcessView{
+		pd: p,
+		n:  name,
+	}
 }
 
 type ProcessView struct {
-	tview.TableContentReadOnly
 	pd *ProcessData
+	n  string
+}
+
+func (p *ProcessView) Count() int {
+	p.pd.m.RLock()
+	defer p.pd.m.RUnlock()
+
+	return len(p.pd.views[p.n])
+}
+
+func (p *ProcessView) Get(i int) statusjson.Process {
+	p.pd.m.RLock()
+	defer p.pd.m.RUnlock()
+
+	return p.pd.views[p.n][i]
+}
+
+type ProcessTableContent struct {
+	tview.TableContentReadOnly
+	pv *ProcessView
 
 	columns []ColumnId
 }
 
-func (v *ProcessView) GetCell(row, column int) *tview.TableCell {
-	v.pd.m.RLock()
-	defer v.pd.m.RUnlock()
-
+func (v *ProcessTableContent) GetCell(row, column int) *tview.TableCell {
 	cid := v.columns[column]
 
 	if row == 0 {
 		return tview.NewTableCell(columns[cid].Name).SetExpansion(1).SetTextColor(tcell.ColorAqua).SetSelectable(false)
 	} else {
-		return tview.NewTableCell(columns[cid].DataFn(v.pd.processes[row-1]))
+		return tview.NewTableCell(columns[cid].DataFn(v.pv.Get(row - 1)))
 	}
 }
 
-func (v *ProcessView) GetRowCount() int {
-	v.pd.m.RLock()
-	defer v.pd.m.RUnlock()
-
-	return len(v.pd.processes) + 1
+func (v *ProcessTableContent) GetRowCount() int {
+	return v.pv.Count() + 1
 }
 
-func (v *ProcessView) GetColumnCount() int {
+func (v *ProcessTableContent) GetColumnCount() int {
 	return len(v.columns)
 }
 
