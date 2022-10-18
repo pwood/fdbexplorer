@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gdamore/tcell/v2"
+	"github.com/pwood/fdbexplorer/statusjson"
 	"github.com/rivo/tview"
 	"sync"
 )
@@ -17,7 +18,7 @@ func (v *View) runData() {
 	for s := range v.ch {
 		v.pd.m.Lock()
 
-		v.pd.processes = []Process{}
+		v.pd.processes = []statusjson.Process{}
 
 		for _, process := range s.ClusterState.Cluster.Processes {
 			v.pd.processes = append(v.pd.processes, process)

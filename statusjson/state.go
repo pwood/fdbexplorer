@@ -1,6 +1,6 @@
-package main
+package statusjson
 
-type StatusJSON struct {
+type Root struct {
 	Cluster Cluster `json:"cluster"`
 }
 

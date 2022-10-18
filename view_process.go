@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/gdamore/tcell/v2"
+	"github.com/pwood/fdbexplorer/statusjson"
 	"github.com/rivo/tview"
 	"sort"
 	"strings"
@@ -20,7 +21,7 @@ const (
 type ProcessData struct {
 	tview.TableContentReadOnly
 
-	processes []Process
+	processes []statusjson.Process
 	sortBy    SortKey
 
 	m *sync.RWMutex
@@ -102,19 +103,19 @@ const (
 
 type ColumnDef struct {
 	Name   string
-	DataFn func(Process) string
+	DataFn func(statusjson.Process) string
 }
 
 var columns = map[ColumnId]ColumnDef{
 	ColumnIPAddressPort: {
 		Name: "IP Address:Port",
-		DataFn: func(process Process) string {
+		DataFn: func(process statusjson.Process) string {
 			return process.Address
 		},
 	},
 	ColumnStatus: {
 		Name: "Status",
-		DataFn: func(process Process) string {
+		DataFn: func(process statusjson.Process) string {
 			if process.Excluded {
 				return "Excluded"
 			} else {
@@ -124,25 +125,25 @@ var columns = map[ColumnId]ColumnDef{
 	},
 	ColumnMachine: {
 		Name: "Machine",
-		DataFn: func(process Process) string {
+		DataFn: func(process statusjson.Process) string {
 			return process.Locality.MachineID
 		},
 	},
 	ColumnLocality: {
 		Name: "Locality",
-		DataFn: func(process Process) string {
+		DataFn: func(process statusjson.Process) string {
 			return fmt.Sprintf("%s / %s", process.Locality.DataHall, process.Locality.DCID)
 		},
 	},
 	ColumnClass: {
 		Name: "Class",
-		DataFn: func(process Process) string {
+		DataFn: func(process statusjson.Process) string {
 			return process.Class
 		},
 	},
 	ColumnRoles: {
 		Name: "Roles",
-		DataFn: func(process Process) string {
+		DataFn: func(process statusjson.Process) string {
 			var roles []string
 
 			for _, role := range process.Roles {
@@ -154,7 +155,7 @@ var columns = map[ColumnId]ColumnDef{
 	},
 	ColumnRAMUsage: {
 		Name: "RAM Usage",
-		DataFn: func(process Process) string {
+		DataFn: func(process statusjson.Process) string {
 			memUsage := float64(process.Memory.UsedBytes) / float64(process.Memory.AvailableBytes)
 
 			used := process.Memory.UsedBytes / 1024 / 1024
@@ -165,7 +166,7 @@ var columns = map[ColumnId]ColumnDef{
 	},
 	ColumnDiskUsage: {
 		Name: "Disk Usage",
-		DataFn: func(process Process) string {
+		DataFn: func(process statusjson.Process) string {
 			usedBytes := process.Disk.TotalBytes - process.Disk.FreeBytes
 			diskUsage := float64(usedBytes) / float64(process.Disk.TotalBytes)
 
@@ -177,19 +178,19 @@ var columns = map[ColumnId]ColumnDef{
 	},
 	ColumnCPUActivity: {
 		Name: "CPU Activity",
-		DataFn: func(process Process) string {
+		DataFn: func(process statusjson.Process) string {
 			return fmt.Sprintf("%0.1f%%", process.CPU.UsageCores*100)
 		},
 	},
 	ColumnDiskActivity: {
 		Name: "Disk Activity",
-		DataFn: func(process Process) string {
+		DataFn: func(process statusjson.Process) string {
 			return fmt.Sprintf("%0.1f RPS / %0.1f WPS", process.Disk.Reads.Hz, process.Disk.Writes.Hz)
 		},
 	},
 	ColumnNetworkActivity: {
 		Name: "Network Activity",
-		DataFn: func(process Process) string {
+		DataFn: func(process statusjson.Process) string {
 			return fmt.Sprintf("%0.1f Mbps / %0.1f Mbps", process.Network.MegabitsSent.Hz, process.Network.MegabitsReceived.Hz)
 		},
 	},

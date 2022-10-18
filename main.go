@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/pwood/fdbexplorer/statusjson"
 	"time"
 )
 
@@ -10,7 +11,7 @@ type State struct {
 	Duration     time.Duration
 	Interval     time.Duration
 	Live         bool
-	ClusterState StatusJSON
+	ClusterState statusjson.Root
 }
 
 func main() {
