@@ -326,10 +326,10 @@ var columns = map[ColumnId]ColumnDef{
 		DataFn: func(process statusjson.Process) string {
 			memUsage := float64(process.Memory.UsedBytes) / float64(process.Memory.AvailableBytes)
 
-			used := process.Memory.UsedBytes / 1024 / 1024
-			available := process.Memory.AvailableBytes / 1024 / 1024
+			used := float64(process.Memory.UsedBytes) / 1024 / 1024 / 1024
+			available := float64(process.Memory.AvailableBytes) / 1024 / 1024 / 1024
 
-			return fmt.Sprintf("%0.1f%% (%d MiB of %d MiB)", memUsage*100, used, available)
+			return fmt.Sprintf("%0.1f%% (%0.1f of %0.1f MiB)", memUsage*100, used, available)
 		},
 	},
 	ColumnDiskUsage: {
@@ -341,7 +341,7 @@ var columns = map[ColumnId]ColumnDef{
 			used := float64(usedBytes) / 1024 / 1024 / 1024
 			available := float64(process.Disk.TotalBytes) / 1024 / 1024 / 1024
 
-			return fmt.Sprintf("%0.1f%% (%0.1f GiB of %0.1f GiB)", diskUsage*100, used, available)
+			return fmt.Sprintf("%0.1f%% (%0.1f of %0.1f GiB)", diskUsage*100, used, available)
 		},
 	},
 	ColumnCPUActivity: {
