@@ -25,7 +25,8 @@ func (v *View) runData() {
 
 func (v *View) run() {
 	v.cd = &ClusterData{m: &sync.RWMutex{}, sortBy: SortIPAddress, views: map[string][]statusjson.Process{}, viewFns: map[string]func(statusjson.Process) bool{}}
-	clusterStatsContent := &ClusterStateTableContent{cd: v.cd}
+	clusterStatsContent := &ClusterStatsTableContent{cd: v.cd}
+	clusterHealthContent := &ClusterHealthTableContent{cd: v.cd}
 
 	pages := tview.NewPages()
 	pages.SetBorderPadding(0, 0, 1, 1)
@@ -101,26 +102,34 @@ func (v *View) run() {
 
 	_, _ = fmt.Fprintf(help, ` F1 [black:darkcyan]Sort[:-] `)
 
-	statsFlex := tview.NewFlex()
-	statsFlex.SetDirection(tview.FlexRow)
-	statsFlex.SetBorderPadding(0, 0, 1, 1)
-	statsFlex.AddItem(tview.NewTextView().SetTextAlign(tview.AlignCenter).SetText("Cluster Workload").SetTextColor(tcell.ColorAqua), 1, 1, false)
-	statsFlex.AddItem(tview.NewTable().SetContent(clusterStatsContent).SetSelectable(false, false), 0, 1, false)
-
 	clusterInfoFlex := tview.NewFlex()
 	clusterInfoFlex.SetDirection(tview.FlexRow)
 	clusterInfoFlex.SetBorderPadding(0, 0, 1, 1)
 	clusterInfoFlex.AddItem(tview.NewTextView().SetTextAlign(tview.AlignCenter).SetText("Cluster Info").SetTextColor(tcell.ColorAqua), 1, 1, false)
 
+	clusterHealthFlex := tview.NewFlex()
+	clusterHealthFlex.SetDirection(tview.FlexRow)
+	clusterHealthFlex.SetBorderPadding(0, 0, 1, 1)
+	clusterHealthFlex.AddItem(tview.NewTextView().SetTextAlign(tview.AlignCenter).SetText("Cluster Health").SetTextColor(tcell.ColorAqua), 1, 1, false)
+	clusterHealthFlex.AddItem(tview.NewTable().SetContent(clusterHealthContent).SetSelectable(false, false), 0, 1, false)
+
+	clusterWorkloadFlex := tview.NewFlex()
+	clusterWorkloadFlex.SetDirection(tview.FlexRow)
+	clusterWorkloadFlex.SetBorderPadding(0, 0, 1, 1)
+	clusterWorkloadFlex.AddItem(tview.NewTextView().SetTextAlign(tview.AlignCenter).SetText("Cluster Workload").SetTextColor(tcell.ColorAqua), 1, 1, false)
+	clusterWorkloadFlex.AddItem(tview.NewTable().SetContent(clusterStatsContent).SetSelectable(false, false), 0, 1, false)
+
 	grid := tview.NewGrid().SetRows(5, 1, 0, 1).SetColumns(0, 0, 0).SetBorders(true)
-	grid.AddItem(clusterInfoFlex, 0, 0, 1, 2, 0, 0, false)
-	grid.AddItem(statsFlex, 0, 2, 1, 1, 0, 0, false)
+	grid.AddItem(clusterHealthFlex, 0, 0, 1, 2, 0, 0, false)
+	grid.AddItem(clusterWorkloadFlex, 0, 2, 1, 1, 0, 0, false)
 	grid.AddItem(info, 1, 0, 1, 3, 0, 0, false)
 	grid.AddItem(pages, 2, 0, 1, 3, 0, 0, true)
 	grid.AddItem(help, 3, 0, 1, 3, 0, 0, false)
 
-	sortIndex := []SortKey{SortIPAddress, SortRole, SortClass}
+	sortIndex := []SortKey{SortRole, SortIPAddress, SortClass}
 	sortNow := 0
+
+	v.cd.Sort(sortIndex[sortNow])
 
 	grid.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {

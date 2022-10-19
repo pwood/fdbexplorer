@@ -10,10 +10,28 @@ type Cluster struct {
 	Workload          Workload           `json:"workload"`
 	Messages          []Message          `json:"messages"`
 	RecoveryState     RecoveryState      `json:"recovery_state"`
+	Data              Data               `json:"data"`
+}
+
+type Data struct {
+	State      State      `json:"state"`
+	MovingData MovingData `json:"moving_data"`
+}
+
+type State struct {
+	Health               bool   `json:"healthy"`
+	Name                 string `json:"name"`
+	MinReplicasRemaining int    `json:"min_replicas_remaining"`
+}
+
+type MovingData struct {
+	InFlightBytes int `json:"in_flight_bytes"`
+	InQueueBytes  int `json:"in_queue_bytes"`
 }
 
 type RecoveryState struct {
-	Name string `json:"name"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
 type Workload struct {

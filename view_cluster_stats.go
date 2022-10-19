@@ -8,12 +8,12 @@ import (
 
 var statsHeaders = []string{"Tx Started", "Tx Committed", "Tx Conflicted", "Tx Rejected", "Reads", "Writes", "Bytes Read", "Bytes Written"}
 
-type ClusterStateTableContent struct {
+type ClusterStatsTableContent struct {
 	tview.TableContentReadOnly
 	cd *ClusterData
 }
 
-func (v *ClusterStateTableContent) GetCell(row, column int) *tview.TableCell {
+func (v *ClusterStatsTableContent) GetCell(row, column int) *tview.TableCell {
 	cs := v.cd.Stats()
 
 	text := ""
@@ -50,10 +50,10 @@ func (v *ClusterStateTableContent) GetCell(row, column int) *tview.TableCell {
 	return tview.NewTableCell(text).SetExpansion(2)
 }
 
-func (v *ClusterStateTableContent) GetRowCount() int {
+func (v *ClusterStatsTableContent) GetRowCount() int {
 	return 4
 }
 
-func (v *ClusterStateTableContent) GetColumnCount() int {
+func (v *ClusterStatsTableContent) GetColumnCount() int {
 	return 4
 }
