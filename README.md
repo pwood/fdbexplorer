@@ -2,7 +2,6 @@
 
 [![license](https://img.shields.io/github/license/pwood/fdbexplorer.svg)](https://github.com/pwood/fdbexplorer/blob/master/LICENSE)
 [![standard-readme compliant](https://img.shields.io/badge/standard--readme-OK-green.svg)](https://github.com/RichardLitt/standard-readme)
-[![Actions Status](https://github.com/pwood/fdbexplorer/workflows/main/badge.svg)](https://github.com/pwood/fdbexplorer/actions)
 
 > A TUI tool for exploring the status of FoundationDB clusters.
 
@@ -17,9 +16,35 @@
 
 ## Background
 
+The output of `status details` from fdbcli is incomplete, and the JSON file produced by `status json` is difficult
+to consume at a glance. `fdbexplorer` is a took in the same vane as `k9s` to make viewing an FoundationDB cluster
+easier for operators at a glance.
+
+**This tool is very early in development, it still needs more refactoring to make it maintainable - plus more functionality needs to be added.**
+
 ## Install
 
+Download the latest release for your operating system and architecture from: (https://github.com/pwood/fdbexplorer/releases)[https://github.com/pwood/fdbexplorer/releases]
+
+Alternatively you may build yourself on a machine that has the `foundationdb-clients` installed by:
+
+`go build`
+
 ## Usage
+
+`fdbexplorer` is configured by command line parameters, though will accept an overridden cluster file location if the
+`FDB_CLUSTER_FILE` environment variable is set.
+
+```shell
+# ./fdbexplorer --help
+Usage of ./fdbexplorer:
+  -cluster-file string
+    	Location of FoundationDB cluster file. (default "/etc/foundationdb/fdb.cluster")
+  -input-file string
+    	Location of an output of 'status json' to explore, will not connect to FoundationDB.
+  -interval duration
+    	Interval for polling FoundationDB for status. (default 10s)
+```
 
 ## Maintainers
 
