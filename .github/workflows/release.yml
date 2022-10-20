@@ -24,8 +24,8 @@ jobs:
 
       - name: Install FoundationDB Client
         run: |
-          curl https://github.com/apple/foundationdb/releases/download/7.1.22/foundationdb-clients_7.1.22-1_amd64.deb -o foundationdb-clients.deb
-          sudo dpkg -i foundationdb-clients.deb
+          wget -nv https://github.com/apple/foundationdb/releases/download/7.1.22/foundationdb-clients_7.1.22-1_amd64.deb -O /tmp/foundationdb-clients.deb
+          sudo dpkg -i /tmp/foundationdb-clients.deb
 
       - name: Get dependencies
         run: |
