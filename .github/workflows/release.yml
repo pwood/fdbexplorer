@@ -33,8 +33,7 @@ jobs:
 
       - name: Build linux/amd64 binary
         run: |
-          GOOS=linux GOARCH=amd64 go build
-          mv fdbexplorer fdbexplorer-linux-amd64
+          GOOS=linux GOARCH=amd64 go build -o fdbexplorer-linux-amd64        
 
       - name: Release to GitHub Releases
         uses: "marvinpinto/action-automatic-releases@latest"
