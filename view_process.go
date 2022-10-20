@@ -260,6 +260,9 @@ type ColumnDef struct {
 	DataFn func(statusjson.Process) string
 }
 
+const Mibibyte float64 = 1024 * 1024
+const Gibibyte float64 = Mibibyte * 1024
+
 var columns = map[ColumnId]ColumnDef{
 	ColumnIPAddressPort: {
 		Name: "IP Address:Port",
@@ -326,10 +329,10 @@ var columns = map[ColumnId]ColumnDef{
 		DataFn: func(process statusjson.Process) string {
 			memUsage := float64(process.Memory.UsedBytes) / float64(process.Memory.AvailableBytes)
 
-			used := float64(process.Memory.UsedBytes) / 1024 / 1024 / 1024
-			available := float64(process.Memory.AvailableBytes) / 1024 / 1024 / 1024
+			used := float64(process.Memory.UsedBytes) / Gibibyte
+			available := float64(process.Memory.AvailableBytes) / Gibibyte
 
-			return fmt.Sprintf("%0.1f%% (%0.1f of %0.1f MiB)", memUsage*100, used, available)
+			return fmt.Sprintf("%0.1f%% (%0.1f of %0.1f GiB)", memUsage*100, used, available)
 		},
 	},
 	ColumnDiskUsage: {
@@ -338,8 +341,8 @@ var columns = map[ColumnId]ColumnDef{
 			usedBytes := process.Disk.TotalBytes - process.Disk.FreeBytes
 			diskUsage := float64(usedBytes) / float64(process.Disk.TotalBytes)
 
-			used := float64(usedBytes) / 1024 / 1024 / 1024
-			available := float64(process.Disk.TotalBytes) / 1024 / 1024 / 1024
+			used := float64(usedBytes) / Gibibyte
+			available := float64(process.Disk.TotalBytes) / Gibibyte
 
 			return fmt.Sprintf("%0.1f%% (%0.1f of %0.1f GiB)", diskUsage*100, used, available)
 		},
@@ -378,22 +381,22 @@ var columns = map[ColumnId]ColumnDef{
 	ColumnKVStorage: {
 		Name: "KV Storage",
 		DataFn: func(process statusjson.Process) string {
-			used := float64(process.Roles[0].KVUsedBytes) / 1024 / 1024
-			return fmt.Sprintf("%0.1f MiB", used)
+			used := process.Roles[0].KVUsedBytes / Gibibyte
+			return fmt.Sprintf("%0.1f GiB", used)
 		},
 	},
 	ColumnQueueStorage: {
 		Name: "Queue Storage",
 		DataFn: func(process statusjson.Process) string {
-			used := float64(process.Roles[0].QueueUsedBytes) / 1024 / 1024
+			used := process.Roles[0].QueueUsedBytes / Mibibyte
 			return fmt.Sprintf("%0.1f MiB", used)
 		},
 	},
 	ColumnDurabilityRate: {
 		Name: "Input / Durable Rate",
 		DataFn: func(process statusjson.Process) string {
-			input := float64(process.Roles[0].InputBytes.Hz) / 1024 / 1024
-			durable := float64(process.Roles[0].DurableBytes.Hz) / 1024 / 1024
+			input := process.Roles[0].InputBytes.Hz / Mibibyte
+			durable := process.Roles[0].DurableBytes.Hz / Mibibyte
 
 			return fmt.Sprintf("%0.1f MiB/s / %0.1f MiB/s", input, durable)
 		},
