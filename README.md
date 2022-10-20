@@ -24,7 +24,7 @@ easier for operators at a glance.
 
 ## Install
 
-Download the latest release for your operating system and architecture from: (https://github.com/pwood/fdbexplorer/releases)[https://github.com/pwood/fdbexplorer/releases]
+Download the latest release for your operating system and architecture from: [https://github.com/pwood/fdbexplorer/releases](https://github.com/pwood/fdbexplorer/releases)
 
 Alternatively you may build yourself on a machine that has the `foundationdb-clients` installed by:
 
@@ -32,8 +32,8 @@ Alternatively you may build yourself on a machine that has the `foundationdb-cli
 
 ## Usage
 
-`fdbexplorer` is configured by command line parameters, though will accept an overridden cluster file location if the
-`FDB_CLUSTER_FILE` environment variable is set.
+`fdbexplorer` is primarily configured by command line parameters. If `FDB_CLUSTER_FILE` environment variable is set, 
+then it will attempt to find the cluster file at that location automatically (i.e. no command line arguments are required).
 
 ```shell
 # ./fdbexplorer --help
