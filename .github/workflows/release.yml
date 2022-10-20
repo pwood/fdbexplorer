@@ -35,6 +35,10 @@ jobs:
         run: |
           GOOS=linux GOARCH=amd64 go build -o fdbexplorer-linux-amd64        
 
+      - name: Calculate checksums
+        run: |
+          sha256sum ./fdbexplorer-linux-amd64 > fdbexplorer-linux-amd64.sha256
+
       - name: Release to GitHub Releases
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
@@ -42,3 +46,4 @@ jobs:
           prerelease: false
           files: |
             fdbexplorer-linux-amd64
+            fdbexplorer-linux-amd64.sha256
