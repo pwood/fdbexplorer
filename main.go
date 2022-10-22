@@ -2,18 +2,12 @@ package main
 
 import (
 	"flag"
-	"github.com/pwood/fdbexplorer/statusjson"
+	"github.com/pwood/fdbexplorer/data"
+	"github.com/pwood/fdbexplorer/data/source"
+	"github.com/pwood/fdbexplorer/ui"
 	"os"
 	"time"
 )
-
-type State struct {
-	Status       string
-	Duration     time.Duration
-	Interval     time.Duration
-	Live         bool
-	ClusterState statusjson.Root
-}
 
 func main() {
 	defaultClusterFile, found := os.LookupEnv("FDB_CLUSTER_FILE")
@@ -27,15 +21,14 @@ func main() {
 
 	flag.Parse()
 
-	stateCh := make(chan State)
+	stateCh := make(chan data.State)
 	defer close(stateCh)
 
 	if len(*inputFile) > 0 {
-		go handleDataFile(stateCh, *inputFile)
+		go source.NewFile(stateCh, *inputFile).Run()
 	} else {
-		go handleDataFDB(stateCh, *clusterFile, *interval)
+		go source.NewFDB(stateCh, *clusterFile, *interval).Run()
 	}
 
-	v := View{ch: stateCh}
-	v.run()
+	ui.New(stateCh).Run()
 }

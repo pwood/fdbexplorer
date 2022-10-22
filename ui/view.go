@@ -1,16 +1,21 @@
-package main
+package ui
 
 import (
 	"fmt"
 	"github.com/gdamore/tcell/v2"
-	"github.com/pwood/fdbexplorer/statusjson"
+	"github.com/pwood/fdbexplorer/data"
+	"github.com/pwood/fdbexplorer/data/fdb"
 	"github.com/rivo/tview"
 	"strconv"
 	"sync"
 )
 
+func New(ch chan data.State) *View {
+	return &View{ch: ch}
+}
+
 type View struct {
-	ch  chan State
+	ch  chan data.State
 	app *tview.Application
 
 	cd *ClusterData
@@ -24,7 +29,7 @@ func (v *View) runData() {
 }
 
 func (v *View) run() {
-	v.cd = &ClusterData{m: &sync.RWMutex{}, sortBy: SortIPAddress, views: map[string][]statusjson.Process{}, viewFns: map[string]func(statusjson.Process) bool{}}
+	v.cd = &ClusterData{m: &sync.RWMutex{}, sortBy: SortIPAddress, views: map[string][]fdb.Process{}, viewFns: map[string]func(fdb.Process) bool{}}
 	clusterStatsContent := &ClusterStatsTableContent{cd: v.cd}
 	clusterHealthContent := &ClusterHealthTableContent{cd: v.cd}
 

@@ -1,9 +1,9 @@
-package main
+package ui
 
 import (
 	"fmt"
 	"github.com/gdamore/tcell/v2"
-	"github.com/pwood/fdbexplorer/statusjson"
+	"github.com/pwood/fdbexplorer/data/fdb"
 	"github.com/rivo/tview"
 	"sort"
 	"strings"
@@ -20,11 +20,11 @@ const (
 )
 
 type ClusterData struct {
-	root statusjson.Root
+	root fdb.Root
 
-	processes []statusjson.Process
-	views     map[string][]statusjson.Process
-	viewFns   map[string]func(statusjson.Process) bool
+	processes []fdb.Process
+	views     map[string][]fdb.Process
+	viewFns   map[string]func(fdb.Process) bool
 
 	sortBy SortKey
 
@@ -39,7 +39,7 @@ func (c *ClusterData) Sort(sortKey SortKey) {
 	c._filterAndSort()
 }
 
-func (c *ClusterData) Update(s statusjson.Root) {
+func (c *ClusterData) Update(s fdb.Root) {
 	c.m.Lock()
 	defer c.m.Unlock()
 
@@ -80,11 +80,11 @@ func (c *ClusterData) _filterAndSort() {
 	}
 
 	for i, proc := range c.processes {
-		c.processes[i] = statusjson.CalculateProcessHealth(proc)
+		c.processes[i] = fdb.CalculateProcessHealth(proc)
 	}
 
 	for n, fn := range c.viewFns {
-		var viewProcesses []statusjson.Process
+		var viewProcesses []fdb.Process
 
 		for _, p := range c.processes {
 			if fn(p) {
@@ -96,12 +96,12 @@ func (c *ClusterData) _filterAndSort() {
 	}
 }
 
-func All(_ statusjson.Process) bool {
+func All(_ fdb.Process) bool {
 	return true
 }
 
-func RoleMatch(s string) func(statusjson.Process) bool {
-	return func(process statusjson.Process) bool {
+func RoleMatch(s string) func(fdb.Process) bool {
+	return func(process fdb.Process) bool {
 		for _, r := range process.Roles {
 			if r.Role == s {
 				return true
@@ -111,7 +111,7 @@ func RoleMatch(s string) func(statusjson.Process) bool {
 	}
 }
 
-func (c *ClusterData) View(name string, fn func(statusjson.Process) bool) *ProcessView {
+func (c *ClusterData) View(name string, fn func(fdb.Process) bool) *ProcessView {
 	c.views[name] = nil
 	c.viewFns[name] = fn
 
@@ -188,7 +188,7 @@ func (p *ProcessView) Count() int {
 	return len(p.pd.views[p.n])
 }
 
-func (p *ProcessView) Get(i int) statusjson.Process {
+func (p *ProcessView) Get(i int) fdb.Process {
 	p.pd.m.RLock()
 	defer p.pd.m.RUnlock()
 
@@ -212,11 +212,11 @@ func (v *ProcessTableContent) GetCell(row, column int) *tview.TableCell {
 		color := tcell.ColorWhite
 
 		switch process.Health {
-		case statusjson.HealthCritical:
+		case fdb.HealthCritical:
 			color = tcell.ColorRed
-		case statusjson.HealthWarning:
+		case fdb.HealthWarning:
 			color = tcell.ColorYellow
-		case statusjson.HealthExcluded:
+		case fdb.HealthExcluded:
 			color = tcell.ColorBlue
 		}
 
@@ -257,7 +257,7 @@ const (
 
 type ColumnDef struct {
 	Name   string
-	DataFn func(statusjson.Process) string
+	DataFn func(fdb.Process) string
 }
 
 const Mibibyte float64 = 1024 * 1024
@@ -266,13 +266,13 @@ const Gibibyte float64 = Mibibyte * 1024
 var columns = map[ColumnId]ColumnDef{
 	ColumnIPAddressPort: {
 		Name: "IP Address:Port",
-		DataFn: func(process statusjson.Process) string {
+		DataFn: func(process fdb.Process) string {
 			return process.Address
 		},
 	},
 	ColumnStatus: {
 		Name: "Status",
-		DataFn: func(process statusjson.Process) string {
+		DataFn: func(process fdb.Process) string {
 			var statuses []string
 
 			if process.Excluded {
@@ -296,25 +296,25 @@ var columns = map[ColumnId]ColumnDef{
 	},
 	ColumnMachine: {
 		Name: "Machine",
-		DataFn: func(process statusjson.Process) string {
+		DataFn: func(process fdb.Process) string {
 			return process.Locality.MachineID
 		},
 	},
 	ColumnLocality: {
 		Name: "Locality",
-		DataFn: func(process statusjson.Process) string {
+		DataFn: func(process fdb.Process) string {
 			return fmt.Sprintf("%s / %s", process.Locality.DataHall, process.Locality.DCID)
 		},
 	},
 	ColumnClass: {
 		Name: "Class",
-		DataFn: func(process statusjson.Process) string {
+		DataFn: func(process fdb.Process) string {
 			return process.Class
 		},
 	},
 	ColumnRoles: {
 		Name: "Roles",
-		DataFn: func(process statusjson.Process) string {
+		DataFn: func(process fdb.Process) string {
 			var roles []string
 
 			for _, role := range process.Roles {
@@ -326,7 +326,7 @@ var columns = map[ColumnId]ColumnDef{
 	},
 	ColumnRAMUsage: {
 		Name: "RAM Usage",
-		DataFn: func(process statusjson.Process) string {
+		DataFn: func(process fdb.Process) string {
 			memUsage := float64(process.Memory.UsedBytes) / float64(process.Memory.AvailableBytes)
 
 			used := float64(process.Memory.UsedBytes) / Gibibyte
@@ -337,7 +337,7 @@ var columns = map[ColumnId]ColumnDef{
 	},
 	ColumnDiskUsage: {
 		Name: "Disk Usage",
-		DataFn: func(process statusjson.Process) string {
+		DataFn: func(process fdb.Process) string {
 			usedBytes := process.Disk.TotalBytes - process.Disk.FreeBytes
 			diskUsage := float64(usedBytes) / float64(process.Disk.TotalBytes)
 
@@ -349,67 +349,66 @@ var columns = map[ColumnId]ColumnDef{
 	},
 	ColumnCPUActivity: {
 		Name: "CPU Activity",
-		DataFn: func(process statusjson.Process) string {
+		DataFn: func(process fdb.Process) string {
 			return fmt.Sprintf("%0.1f%%", process.CPU.UsageCores*100)
 		},
 	},
 	ColumnDiskActivity: {
 		Name: "Disk Activity",
-		DataFn: func(process statusjson.Process) string {
+		DataFn: func(process fdb.Process) string {
 			busy := process.Disk.Busy * 100
 			return fmt.Sprintf("%0.1f RPS / %0.1f WPS / %0.1f%%", process.Disk.Reads.Hz, process.Disk.Writes.Hz, busy)
 		},
 	},
 	ColumnNetworkActivity: {
 		Name: "Network Activity",
-		DataFn: func(process statusjson.Process) string {
+		DataFn: func(process fdb.Process) string {
 			return fmt.Sprintf("%0.1f Mbps / %0.1f Mbps", process.Network.MegabitsSent.Hz, process.Network.MegabitsReceived.Hz)
 		},
 	},
 	ColumnVersion: {
 		Name: "Version",
-		DataFn: func(process statusjson.Process) string {
+		DataFn: func(process fdb.Process) string {
 			return process.Version
 		},
 	},
 	ColumnUptime: {
 		Name: "Uptime",
-		DataFn: func(process statusjson.Process) string {
+		DataFn: func(process fdb.Process) string {
 			return (time.Duration(process.Uptime) * time.Second).String()
 		},
 	},
 	ColumnKVStorage: {
 		Name: "KV Storage",
-		DataFn: func(process statusjson.Process) string {
+		DataFn: func(process fdb.Process) string {
 			used := process.Roles[0].KVUsedBytes / Gibibyte
 			return fmt.Sprintf("%0.1f GiB", used)
 		},
 	},
 	ColumnQueueStorage: {
 		Name: "Queue Storage",
-		DataFn: func(process statusjson.Process) string {
+		DataFn: func(process fdb.Process) string {
 			used := process.Roles[0].QueueUsedBytes / Mibibyte
 			return fmt.Sprintf("%0.1f MiB", used)
 		},
 	},
 	ColumnDurabilityRate: {
 		Name: "Input / Durable Rate",
-		DataFn: func(process statusjson.Process) string {
+		DataFn: func(process fdb.Process) string {
 			input := process.Roles[0].InputBytes.Hz / Mibibyte
 			durable := process.Roles[0].DurableBytes.Hz / Mibibyte
-
 			return fmt.Sprintf("%0.1f MiB/s / %0.1f MiB/s", input, durable)
 		},
 	},
 	ColumnStorageLag: {
 		Name: "Data / Durability Lag",
-		DataFn: func(process statusjson.Process) string {
+		DataFn: func(process fdb.Process) string {
 			return fmt.Sprintf("%0.1fs / %0.1fs", process.Roles[0].DataLag.Seconds, process.Roles[0].DurabilityLag.Seconds)
 		},
 	},
 	ColumnTotalQueries: {
 		Name: "Queries",
-		DataFn: func(process statusjson.Process) string {
+		DataFn: func(process fdb.Process) string {
 			return fmt.Sprintf("%0.1f/s", process.Roles[0].TotalQueries.Hz)
 		},
 	},

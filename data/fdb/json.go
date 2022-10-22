@@ -1,4 +1,4 @@
-package statusjson
+package fdb
 
 type Root struct {
 	Cluster Cluster `json:"cluster"`

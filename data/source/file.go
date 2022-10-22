@@ -1,36 +1,46 @@
-package main
+package source
 
 import (
 	"fmt"
+	"github.com/pwood/fdbexplorer/data"
 	"os"
 	"time"
 )
 
-func handleDataFile(ch chan State, inputFile string) {
+func NewFile(ch chan data.State, fn string) *File {
+	return &File{ch: ch, fn: fn}
+}
+
+type File struct {
+	ch chan data.State
+	fn string
+}
+
+func (f *File) Run() {
 	start := time.Now()
 
-	f, err := os.Open(inputFile)
+	file, err := os.Open(f.fn)
 	defer func(f *os.File) {
 		_ = f.Close()
-	}(f)
+	}(file)
 
 	if err != nil {
-		ch <- State{
+		f.ch <- data.State{
 			Status: fmt.Sprintf("failed to open input file: %s", err.Error()),
 		}
 		return
 	}
 
-	cs, err := handleDataParse(f)
+	cs, err := parseFDBStatusJSON(file)
 
 	if err != nil {
-		ch <- State{
+		f.ch <- data.State{
 			Status: err.Error(),
 		}
 		return
 	}
 
-	ch <- State{
+	f.ch <- data.State{
 		Status:       "Successfully read input file.",
 		Duration:     time.Now().Sub(start),
 		Live:         false,
