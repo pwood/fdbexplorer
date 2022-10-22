@@ -6,29 +6,18 @@ import (
 	"github.com/pwood/fdbexplorer/data/source"
 	"github.com/pwood/fdbexplorer/ui"
 	"os"
-	"time"
 )
 
 func main() {
-	defaultClusterFile, found := os.LookupEnv("FDB_CLUSTER_FILE")
-	if !found {
-		defaultClusterFile = "/etc/foundationdb/fdb.cluster"
-	}
+	ch := make(chan data.State)
+	defer close(ch)
 
-	clusterFile := flag.String("cluster-file", defaultClusterFile, "Location of FoundationDB cluster file.")
-	interval := flag.Duration("interval", 10*time.Second, "Interval for polling FoundationDB for status.")
-	inputFile := flag.String("input-file", "", "Location of an output of 'status json' to explore, will not connect to FoundationDB.")
-
-	flag.Parse()
-
-	stateCh := make(chan data.State)
-	defer close(stateCh)
-
-	if len(*inputFile) > 0 {
-		go source.NewFile(stateCh, *inputFile).Run()
+	if src := source.Select(ch); src == nil {
+		flag.PrintDefaults()
+		os.Exit(1)
 	} else {
-		go source.NewFDB(stateCh, *clusterFile, *interval).Run()
+		go src.Run()
 	}
 
-	ui.New(stateCh).Run()
+	ui.New(ch).Run()
 }

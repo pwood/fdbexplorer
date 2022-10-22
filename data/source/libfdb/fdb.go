@@ -1,17 +1,31 @@
 //go:build cgo && amd64 && (linux || darwin)
 
-package source
+package libfdb
 
 import (
+	"flag"
 	"fmt"
 	"github.com/apple/foundationdb/bindings/go/src/fdb"
 	"github.com/pwood/fdbexplorer/data"
+	"github.com/pwood/fdbexplorer/data/common"
+	"os"
 	"strings"
 	"time"
 )
 
-func NewFDB(ch chan data.State, clusterFile string, interval time.Duration) *FDB {
-	return &FDB{ch: ch, clusterFile: clusterFile, interval: interval}
+var clusterFile *string
+
+func init() {
+	defaultClusterFile, found := os.LookupEnv("FDB_CLUSTER_FILE")
+	if !found {
+		defaultClusterFile = "/etc/foundationdb/fdb.cluster"
+	}
+
+	clusterFile = flag.String("cluster-file", defaultClusterFile, "Location of FoundationDB cluster file.")
+}
+
+func NewFDB(ch chan data.State, interval time.Duration) (*FDB, bool) {
+	return &FDB{ch: ch, clusterFile: *clusterFile, interval: interval}, true
 }
 
 type FDB struct {
@@ -53,7 +67,7 @@ func (f *FDB) poll(db fdb.Database, ch chan data.State) {
 		return
 	}
 
-	cs, err := parseFDBStatusJSON(strings.NewReader(string(d.([]byte))))
+	cs, err := common.ParseJSON(strings.NewReader(string(d.([]byte))))
 
 	if err != nil {
 		ch <- data.State{

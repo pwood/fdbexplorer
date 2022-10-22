@@ -1,14 +1,26 @@
-package source
+package file
 
 import (
+	"flag"
 	"fmt"
 	"github.com/pwood/fdbexplorer/data"
+	"github.com/pwood/fdbexplorer/data/common"
 	"os"
 	"time"
 )
 
-func NewFile(ch chan data.State, fn string) *File {
-	return &File{ch: ch, fn: fn}
+var inputFile *string
+
+func init() {
+	inputFile = flag.String("input-file", "", "Location of an output of 'status json' to explore, will not connect to FoundationDB.")
+}
+
+func NewFile(ch chan data.State) (*File, bool) {
+	if len(*inputFile) == 0 {
+		return nil, false
+	}
+
+	return &File{ch: ch, fn: *inputFile}, true
 }
 
 type File struct {
@@ -31,7 +43,7 @@ func (f *File) Run() {
 		return
 	}
 
-	cs, err := parseFDBStatusJSON(file)
+	cs, err := common.ParseJSON(file)
 
 	if err != nil {
 		f.ch <- data.State{
