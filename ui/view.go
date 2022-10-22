@@ -28,7 +28,7 @@ func (v *View) runData() {
 	}
 }
 
-func (v *View) run() {
+func (v *View) Run() {
 	v.cd = &ClusterData{m: &sync.RWMutex{}, sortBy: SortIPAddress, views: map[string][]fdb.Process{}, viewFns: map[string]func(fdb.Process) bool{}}
 	clusterStatsContent := &ClusterStatsTableContent{cd: v.cd}
 	clusterHealthContent := &ClusterHealthTableContent{cd: v.cd}
