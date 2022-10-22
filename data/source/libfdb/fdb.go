@@ -21,7 +21,7 @@ func init() {
 		defaultClusterFile = "/etc/foundationdb/fdb.cluster"
 	}
 
-	clusterFile = flag.String("cluster-file", defaultClusterFile, "Location of FoundationDB cluster file.")
+	clusterFile = flag.String("cluster-file", defaultClusterFile, "Location of FoundationDB cluster file, environment variable FDB_CLUSTER_FILE also obeyed.")
 }
 
 func NewFDB(ch chan data.State, interval time.Duration) (*FDB, bool) {
