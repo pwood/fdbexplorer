@@ -7,7 +7,6 @@ import (
 	"github.com/pwood/fdbexplorer/data/fdb"
 	"github.com/pwood/fdbexplorer/ui/components"
 	"github.com/rivo/tview"
-	"strconv"
 )
 
 type UpdatableViews func(root fdb.Root)
@@ -34,9 +33,6 @@ func (m *Main) runData() {
 }
 
 func (m *Main) Run() {
-	pages := tview.NewPages()
-	pages.SetBorderPadding(0, 0, 1, 1)
-
 	sorter := &ProcessSorter{}
 
 	localityDataContent := components.NewDataTable[fdb.Process](
@@ -87,39 +83,11 @@ func (m *Main) Run() {
 	storage := tview.NewTable().SetContent(storageDataContent).SetFixed(1, 0).SetSelectable(true, false)
 	logs := tview.NewTable().SetContent(logDataContent).SetFixed(1, 0).SetSelectable(true, false)
 
-	pages.AddPage("0", locality, true, true)
-	pages.AddPage("1", usage, true, false)
-	pages.AddPage("2", storage, true, false)
-	pages.AddPage("3", logs, true, false)
-
-	pageIndex := []string{"Locality", "Usage Overview", "Storage Processes", "Log Processes"}
-
-	info := tview.NewTextView().
-		SetDynamicColors(true).
-		SetRegions(true).
-		SetWrap(false).
-		SetTextAlign(tview.AlignCenter).
-		SetHighlightedFunc(func(added, _, _ []string) {
-			pages.SwitchToPage(added[0])
-		})
-
-	// Create the pages for all slides.
-	previousSlide := func() {
-		slide, _ := strconv.Atoi(info.GetHighlights()[0])
-		slide = (slide - 1 + len(pageIndex)) % len(pageIndex)
-		info.Highlight(strconv.Itoa(slide)).ScrollToHighlight()
-	}
-	nextSlide := func() {
-		slide, _ := strconv.Atoi(info.GetHighlights()[0])
-		slide = (slide + 1) % len(pageIndex)
-		info.Highlight(strconv.Itoa(slide)).ScrollToHighlight()
-	}
-
-	for index, title := range pageIndex {
-		_, _ = fmt.Fprintf(info, `%d ["%d"][yellow]%s[white][""]  `, index+1, index, title)
-	}
-
-	info.Highlight("0")
+	slideShow := components.NewSlideShow()
+	slideShow.Add("Locality", locality)
+	slideShow.Add("Usage Overview", usage)
+	slideShow.Add("Storage Processes", storage)
+	slideShow.Add("Log Processes", logs)
 
 	help := tview.NewTextView().
 		SetDynamicColors(true).
@@ -141,19 +109,18 @@ func (m *Main) Run() {
 	clusterWorkloadFlex.AddItem(tview.NewTextView().SetTextAlign(tview.AlignCenter).SetText("Cluster Workload").SetTextColor(tcell.ColorAqua), 1, 1, false)
 	clusterWorkloadFlex.AddItem(tview.NewTable().SetContent(clusterStatsContent).SetSelectable(false, false), 0, 1, false)
 
-	grid := tview.NewGrid().SetRows(5, 1, 0, 1).SetColumns(0, 0, 0).SetBorders(true)
+	grid := tview.NewGrid().SetRows(5, 0, 1).SetColumns(0, 0, 0).SetBorders(true)
 	grid.AddItem(clusterHealthFlex, 0, 0, 1, 2, 0, 0, false)
 	grid.AddItem(clusterWorkloadFlex, 0, 2, 1, 1, 0, 0, false)
-	grid.AddItem(info, 1, 0, 1, 3, 0, 0, false)
-	grid.AddItem(pages, 2, 0, 1, 3, 0, 0, true)
-	grid.AddItem(help, 3, 0, 1, 3, 0, 0, false)
+	grid.AddItem(slideShow, 1, 0, 1, 3, 0, 0, true)
+	grid.AddItem(help, 2, 0, 1, 3, 0, 0, false)
 
 	grid.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyLeft:
-			previousSlide()
+			slideShow.Prev()
 		case tcell.KeyRight:
-			nextSlide()
+			slideShow.Next()
 		case tcell.KeyF1:
 			sorter.NextSort()
 			localityDataContent.Sort()
