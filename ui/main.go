@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"github.com/gdamore/tcell/v2"
 	"github.com/pwood/fdbexplorer/data"
 	"github.com/pwood/fdbexplorer/data/fdb"
@@ -89,13 +88,7 @@ func (m *Main) Run() {
 	slideShow.Add("Storage Processes", storage)
 	slideShow.Add("Log Processes", logs)
 
-	help := tview.NewTextView().
-		SetDynamicColors(true).
-		SetRegions(true).
-		SetWrap(false).
-		SetTextAlign(tview.AlignLeft)
-
-	_, _ = fmt.Fprintf(help, ` F1 [black:darkcyan]Sort[:-] `)
+	help := tview.NewTable().SetContent(&HelpKeys{sorter: sorter}).SetSelectable(false, false)
 
 	clusterHealthFlex := tview.NewFlex()
 	clusterHealthFlex.SetDirection(tview.FlexRow)
@@ -122,7 +115,7 @@ func (m *Main) Run() {
 		case tcell.KeyRight:
 			slideShow.Next()
 		case tcell.KeyF1:
-			sorter.NextSort()
+			sorter.Next()
 			localityDataContent.Sort()
 			usageDataContent.Sort()
 			storageDataContent.Sort()

@@ -43,7 +43,7 @@ type ProcessSorter struct {
 	i int
 }
 
-func (p *ProcessSorter) NextSort() {
+func (p *ProcessSorter) Next() {
 	p.i++
 	if p.i > 2 {
 		p.i = 0
