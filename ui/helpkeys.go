@@ -23,7 +23,7 @@ func (h *HelpKeys) GetCell(_, column int) *tview.TableCell {
 		text = fmt.Sprintf("%s", helpKeyText[column])
 	}
 
-	return tview.NewTableCell(fmt.Sprintf(" F%d [black:darkcyan]%s[:-]", column+1, text))
+	return tview.NewTableCell(fmt.Sprintf("F%d [black:darkcyan]%s[:-]", column+1, text))
 }
 
 func (h *HelpKeys) GetRowCount() int {

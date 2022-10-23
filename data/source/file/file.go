@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/pwood/fdbexplorer/data"
-	"github.com/pwood/fdbexplorer/data/common"
+	"io"
 	"os"
 	"time"
 )
@@ -38,25 +38,23 @@ func (f *File) Run() {
 
 	if err != nil {
 		f.ch <- data.State{
-			Status: fmt.Sprintf("failed to open input file: %s", err.Error()),
+			Err: fmt.Errorf("failed to open input file: %w", err),
 		}
 		return
 	}
 
-	cs, err := common.ParseJSON(file)
+	d, err := io.ReadAll(file)
 
 	if err != nil {
 		f.ch <- data.State{
-			Status: err.Error(),
+			Err: fmt.Errorf("failed to read input file: %w", err),
 		}
 		return
 	}
 
 	f.ch <- data.State{
-		Status:       "Successfully read input file.",
-		Duration:     time.Now().Sub(start),
-		Live:         false,
-		Interval:     0,
-		ClusterState: cs,
+		Duration: time.Now().Sub(start),
+		Interval: 0,
+		Data:     d,
 	}
 }

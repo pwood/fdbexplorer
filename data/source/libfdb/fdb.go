@@ -7,9 +7,7 @@ import (
 	"fmt"
 	"github.com/apple/foundationdb/bindings/go/src/fdb"
 	"github.com/pwood/fdbexplorer/data"
-	"github.com/pwood/fdbexplorer/data/common"
 	"os"
-	"strings"
 	"time"
 )
 
@@ -62,25 +60,14 @@ func (f *FDB) poll(db fdb.Database, ch chan data.State) {
 
 	if err != nil {
 		ch <- data.State{
-			Status: fmt.Sprintf("foundationdb err: %s", err.Error()),
-		}
-		return
-	}
-
-	cs, err := common.ParseJSON(strings.NewReader(string(d.([]byte))))
-
-	if err != nil {
-		ch <- data.State{
-			Status: err.Error(),
+			Err: fmt.Errorf("foundationdb err: %w", err),
 		}
 		return
 	}
 
 	ch <- data.State{
-		Status:       "Successfully read from FDB.",
-		Duration:     time.Now().Sub(start),
-		Live:         true,
-		Interval:     0,
-		ClusterState: cs,
+		Duration: time.Now().Sub(start),
+		Interval: f.interval,
+		Data:     d.([]byte),
 	}
 }

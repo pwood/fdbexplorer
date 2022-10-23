@@ -1,11 +1,15 @@
 package ui
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/gdamore/tcell/v2"
 	"github.com/pwood/fdbexplorer/data"
 	"github.com/pwood/fdbexplorer/data/fdb"
 	"github.com/pwood/fdbexplorer/ui/components"
 	"github.com/rivo/tview"
+	"strings"
+	"time"
 )
 
 type UpdatableViews func(root fdb.Root)
@@ -19,12 +23,43 @@ type Main struct {
 	app *tview.Application
 
 	updatable []UpdatableViews
+	rawJson   []byte
+
+	statusText *tview.TextView
 }
 
 func (m *Main) runData() {
 	for s := range m.ch {
+		var root fdb.Root
+
+		if s.Err == nil {
+			s.Err = json.Unmarshal(s.Data, &root)
+		}
+
+		text := []string{"[", time.Now().Format("15:04:05"), "] "}
+
+		if s.Err != nil {
+			text = append(text, s.Err.Error())
+			m.statusText.SetTextColor(tcell.ColorRed)
+		} else {
+			text = append(text, fmt.Sprintf("Updated in %dms", s.Duration.Milliseconds()))
+			m.statusText.SetTextColor(tcell.ColorGreen)
+		}
+
+		if s.Interval != 0 {
+			text = append(text, fmt.Sprintf(", next in %s.", s.Interval.String()))
+		}
+
+		m.statusText.SetText(strings.Join(text, ""))
+
+		if s.Err != nil {
+			continue
+		}
+
+		m.rawJson = s.Data
+
 		for _, updateFn := range m.updatable {
-			updateFn(s.ClusterState)
+			updateFn(root)
 		}
 
 		m.app.Draw()
@@ -88,7 +123,14 @@ func (m *Main) Run() {
 	slideShow.Add("Storage Processes", storage)
 	slideShow.Add("Log Processes", logs)
 
-	help := tview.NewTable().SetContent(&HelpKeys{sorter: sorter}).SetSelectable(false, false)
+	m.statusText = tview.NewTextView()
+	m.statusText.SetTextAlign(tview.AlignRight)
+	m.statusText.SetText("")
+
+	bottom := tview.NewFlex()
+	bottom.SetBorderPadding(0, 0, 1, 1)
+	bottom.AddItem(tview.NewTable().SetContent(&HelpKeys{sorter: sorter}).SetSelectable(false, false), 0, 1, false)
+	bottom.AddItem(m.statusText, 0, 1, false)
 
 	clusterHealthFlex := tview.NewFlex()
 	clusterHealthFlex.SetDirection(tview.FlexRow)
@@ -106,7 +148,7 @@ func (m *Main) Run() {
 	grid.AddItem(clusterHealthFlex, 0, 0, 1, 2, 0, 0, false)
 	grid.AddItem(clusterWorkloadFlex, 0, 2, 1, 1, 0, 0, false)
 	grid.AddItem(slideShow, 1, 0, 1, 3, 0, 0, true)
-	grid.AddItem(help, 2, 0, 1, 3, 0, 0, false)
+	grid.AddItem(bottom, 2, 0, 1, 3, 0, 0, false)
 
 	grid.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
