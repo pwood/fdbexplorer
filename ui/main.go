@@ -144,11 +144,6 @@ func (m *Main) Run() {
 
 	_, _ = fmt.Fprintf(help, ` F1 [black:darkcyan]Sort[:-] `)
 
-	clusterInfoFlex := tview.NewFlex()
-	clusterInfoFlex.SetDirection(tview.FlexRow)
-	clusterInfoFlex.SetBorderPadding(0, 0, 1, 1)
-	clusterInfoFlex.AddItem(tview.NewTextView().SetTextAlign(tview.AlignCenter).SetText("Cluster Info").SetTextColor(tcell.ColorAqua), 1, 1, false)
-
 	clusterHealthFlex := tview.NewFlex()
 	clusterHealthFlex.SetDirection(tview.FlexRow)
 	clusterHealthFlex.SetBorderPadding(0, 0, 1, 1)
