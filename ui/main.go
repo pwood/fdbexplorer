@@ -56,37 +56,31 @@ func (m *Main) Run() {
 	pages := tview.NewPages()
 	pages.SetBorderPadding(0, 0, 1, 1)
 
+	sorter := &ProcessSorter{}
+
 	localityDataContent := components.NewDataTable[fdb.Process](
 		[]components.ColumnDef[fdb.Process]{ColumnIPAddressPort, ColumnStatus, ColumnMachine, ColumnLocality, ColumnClass, ColumnRoles, ColumnVersion, ColumnUptime},
 		ProcessColour,
 		All,
-		func(i fdb.Process, j fdb.Process) bool {
-			return false
-		})
+		sorter.Sort)
 
 	usageDataContent := components.NewDataTable[fdb.Process](
 		[]components.ColumnDef[fdb.Process]{ColumnIPAddressPort, ColumnRoles, ColumnCPUActivity, ColumnRAMUsage, ColumnNetworkActivity, ColumnDiskUsage, ColumnDiskActivity},
 		ProcessColour,
 		All,
-		func(i fdb.Process, j fdb.Process) bool {
-			return false
-		})
+		sorter.Sort)
 
 	storageDataContent := components.NewDataTable[fdb.Process](
 		[]components.ColumnDef[fdb.Process]{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnKVStorage, ColumnDurabilityRate, ColumnStorageLag, ColumnTotalQueries},
 		ProcessColour,
 		RoleMatch("storage"),
-		func(i fdb.Process, j fdb.Process) bool {
-			return false
-		})
+		sorter.Sort)
 
 	logDataContent := components.NewDataTable[fdb.Process](
 		[]components.ColumnDef[fdb.Process]{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnQueueStorage, ColumnDurabilityRate},
 		ProcessColour,
 		RoleMatch("log"),
-		func(i fdb.Process, j fdb.Process) bool {
-			return false
-		})
+		sorter.Sort)
 
 	m.updatable = []UpdatableViews{
 		UpdateProcesses(localityDataContent.Update),
@@ -96,15 +90,13 @@ func (m *Main) Run() {
 	}
 
 	locality := tview.NewTable().SetContent(localityDataContent).SetFixed(1, 0).SetSelectable(true, false)
-	pages.AddPage("0", locality, true, true)
-
 	usage := tview.NewTable().SetContent(usageDataContent).SetFixed(1, 0).SetSelectable(true, false)
-	pages.AddPage("1", usage, true, false)
-
 	storage := tview.NewTable().SetContent(storageDataContent).SetFixed(1, 0).SetSelectable(true, false)
-	pages.AddPage("2", storage, true, false)
-
 	logs := tview.NewTable().SetContent(logDataContent).SetFixed(1, 0).SetSelectable(true, false)
+
+	pages.AddPage("0", locality, true, true)
+	pages.AddPage("1", usage, true, false)
+	pages.AddPage("2", storage, true, false)
 	pages.AddPage("3", logs, true, false)
 
 	pageIndex := []string{"Locality", "Usage Overview", "Storage Processes", "Log Processes"}
@@ -114,7 +106,7 @@ func (m *Main) Run() {
 		SetRegions(true).
 		SetWrap(false).
 		SetTextAlign(tview.AlignCenter).
-		SetHighlightedFunc(func(added, removed, remaining []string) {
+		SetHighlightedFunc(func(added, _, _ []string) {
 			pages.SwitchToPage(added[0])
 		})
 
@@ -162,11 +154,6 @@ func (m *Main) Run() {
 	grid.AddItem(info, 1, 0, 1, 3, 0, 0, false)
 	grid.AddItem(pages, 2, 0, 1, 3, 0, 0, true)
 	grid.AddItem(help, 3, 0, 1, 3, 0, 0, false)
-	//
-	//sortIndex := []SortKey{SortRole, SortIPAddress, SortClass}
-	//sortNow := 0
-	//
-	//m.cd.Sort(sortIndex[sortNow])
 
 	grid.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
@@ -174,13 +161,12 @@ func (m *Main) Run() {
 			previousSlide()
 		case tcell.KeyRight:
 			nextSlide()
-		//case tcell.KeyF1:
-		//	sortNow++
-		//	if sortNow >= len(sortIndex) {
-		//		sortNow = 0
-		//	}
-		//
-		//	m.cd.Sort(sortIndex[sortNow])
+		case tcell.KeyF1:
+			sorter.NextSort()
+			localityDataContent.Sort()
+			usageDataContent.Sort()
+			storageDataContent.Sort()
+			logDataContent.Sort()
 		default:
 			return event
 		}

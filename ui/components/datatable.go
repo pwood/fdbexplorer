@@ -59,14 +59,20 @@ func (dt *DataTable[D]) Update(d []D) {
 		}
 	}
 
-	sort.Slice(newData, func(i, j int) bool {
-		return dt.sortFn(newData[i], newData[j])
-	})
+	dt.m.Lock()
+	dt.data = newData
+	dt.m.Unlock()
 
+	dt.Sort()
+}
+
+func (dt *DataTable[D]) Sort() {
 	dt.m.Lock()
 	defer dt.m.Unlock()
 
-	dt.data = newData
+	sort.Slice(dt.data, func(i, j int) bool {
+		return dt.sortFn(dt.data[i], dt.data[j])
+	})
 }
 
 func (dt *DataTable[D]) GetCell(row, column int) *tview.TableCell {
