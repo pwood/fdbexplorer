@@ -10,11 +10,13 @@ import (
 type ColumnDef[D any] interface {
 	Name() string
 	Data(D) string
+	Color(D) tcell.Color
 }
 
 type ColumnImpl[D any] struct {
 	ColName string
 	DataFn  func(D) string
+	ColorFn func(D) tcell.Color
 }
 
 func (c ColumnImpl[D]) Name() string {
@@ -25,13 +27,20 @@ func (c ColumnImpl[D]) Data(d D) string {
 	return c.DataFn(d)
 }
 
-func NewDataTable[D any](columns []ColumnDef[D], rowColor func(D) tcell.Color, filterFn func(D) bool, sortFn func(D, D) bool) *DataTable[D] {
+func (c ColumnImpl[D]) Color(d D) tcell.Color {
+	if c.ColorFn == nil {
+		return tcell.ColorWhite
+	}
+
+	return c.ColorFn(d)
+}
+
+func NewDataTable[D any](columns []ColumnDef[D], filterFn func(D) bool, sortFn func(D, D) bool) *DataTable[D] {
 	return &DataTable[D]{
 		filterFn: filterFn,
 		sortFn:   sortFn,
 
-		columns:  columns,
-		rowColor: rowColor,
+		columns: columns,
 
 		m: &sync.RWMutex{},
 	}
@@ -43,8 +52,7 @@ type DataTable[D any] struct {
 	filterFn func(D) bool
 	sortFn   func(D, D) bool
 
-	columns  []ColumnDef[D]
-	rowColor func(D) tcell.Color
+	columns []ColumnDef[D]
 
 	m    *sync.RWMutex
 	data []D
@@ -85,7 +93,7 @@ func (dt *DataTable[D]) GetCell(row, column int) *tview.TableCell {
 		defer dt.m.RUnlock()
 
 		di := dt.data[row-1]
-		return tview.NewTableCell(col.Data(di)).SetTextColor(dt.rowColor(di))
+		return tview.NewTableCell(col.Data(di)).SetTextColor(col.Color(di))
 	}
 }
 

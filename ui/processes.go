@@ -9,6 +9,18 @@ import (
 	"time"
 )
 
+func UpdateProcesses(f func([]fdb.Process)) func(fdb.Root) {
+	return func(root fdb.Root) {
+		var processes []fdb.Process
+
+		for _, p := range root.Cluster.Processes {
+			processes = append(processes, fdb.AnnotateProcessHealth(p))
+		}
+
+		f(processes)
+	}
+}
+
 func All(_ fdb.Process) bool {
 	return true
 }
@@ -95,6 +107,7 @@ var ColumnIPAddressPort = components.ColumnImpl[fdb.Process]{
 	DataFn: func(process fdb.Process) string {
 		return process.Address
 	},
+	ColorFn: ProcessColour,
 }
 
 var ColumnStatus = components.ColumnImpl[fdb.Process]{
@@ -120,6 +133,7 @@ var ColumnStatus = components.ColumnImpl[fdb.Process]{
 
 		return strings.Join(statuses, " / ")
 	},
+	ColorFn: ProcessColour,
 }
 
 var ColumnMachine = components.ColumnImpl[fdb.Process]{
@@ -127,6 +141,7 @@ var ColumnMachine = components.ColumnImpl[fdb.Process]{
 	DataFn: func(process fdb.Process) string {
 		return process.Locality.MachineID
 	},
+	ColorFn: ProcessColour,
 }
 
 var ColumnLocality = components.ColumnImpl[fdb.Process]{
@@ -134,6 +149,7 @@ var ColumnLocality = components.ColumnImpl[fdb.Process]{
 	DataFn: func(process fdb.Process) string {
 		return fmt.Sprintf("%s / %s", process.Locality.DataHall, process.Locality.DCID)
 	},
+	ColorFn: ProcessColour,
 }
 
 var ColumnClass = components.ColumnImpl[fdb.Process]{
@@ -141,7 +157,9 @@ var ColumnClass = components.ColumnImpl[fdb.Process]{
 	DataFn: func(process fdb.Process) string {
 		return process.Class
 	},
+	ColorFn: ProcessColour,
 }
+
 var ColumnRoles = components.ColumnImpl[fdb.Process]{
 	ColName: "Roles",
 	DataFn: func(process fdb.Process) string {
@@ -153,6 +171,7 @@ var ColumnRoles = components.ColumnImpl[fdb.Process]{
 
 		return strings.Join(roles, ", ")
 	},
+	ColorFn: ProcessColour,
 }
 
 var ColumnRAMUsage = components.ColumnImpl[fdb.Process]{
@@ -165,7 +184,9 @@ var ColumnRAMUsage = components.ColumnImpl[fdb.Process]{
 
 		return fmt.Sprintf("%0.1f%% (%0.1f of %0.1f GiB)", memUsage*100, used, available)
 	},
+	ColorFn: ProcessColour,
 }
+
 var ColumnDiskUsage = components.ColumnImpl[fdb.Process]{
 	ColName: "Disk Usage",
 	DataFn: func(process fdb.Process) string {
@@ -177,31 +198,40 @@ var ColumnDiskUsage = components.ColumnImpl[fdb.Process]{
 
 		return fmt.Sprintf("%0.1f%% (%0.1f of %0.1f GiB)", diskUsage*100, used, available)
 	},
+	ColorFn: ProcessColour,
 }
+
 var ColumnCPUActivity = components.ColumnImpl[fdb.Process]{
 	ColName: "CPU Activity",
 	DataFn: func(process fdb.Process) string {
 		return fmt.Sprintf("%0.1f%%", process.CPU.UsageCores*100)
 	},
+	ColorFn: ProcessColour,
 }
+
 var ColumnDiskActivity = components.ColumnImpl[fdb.Process]{
 	ColName: "Disk Activity",
 	DataFn: func(process fdb.Process) string {
 		busy := process.Disk.Busy * 100
 		return fmt.Sprintf("%0.1f RPS / %0.1f WPS / %0.1f%%", process.Disk.Reads.Hz, process.Disk.Writes.Hz, busy)
 	},
+	ColorFn: ProcessColour,
 }
+
 var ColumnNetworkActivity = components.ColumnImpl[fdb.Process]{
 	ColName: "Network Activity",
 	DataFn: func(process fdb.Process) string {
 		return fmt.Sprintf("%0.1f Mbps / %0.1f Mbps", process.Network.MegabitsSent.Hz, process.Network.MegabitsReceived.Hz)
 	},
+	ColorFn: ProcessColour,
 }
+
 var ColumnVersion = components.ColumnImpl[fdb.Process]{
 	ColName: "Version",
 	DataFn: func(process fdb.Process) string {
 		return process.Version
 	},
+	ColorFn: ProcessColour,
 }
 
 var ColumnUptime = components.ColumnImpl[fdb.Process]{
@@ -209,6 +239,7 @@ var ColumnUptime = components.ColumnImpl[fdb.Process]{
 	DataFn: func(process fdb.Process) string {
 		return (time.Duration(process.Uptime) * time.Second).String()
 	},
+	ColorFn: ProcessColour,
 }
 
 var ColumnKVStorage = components.ColumnImpl[fdb.Process]{
@@ -217,6 +248,7 @@ var ColumnKVStorage = components.ColumnImpl[fdb.Process]{
 		used := process.Roles[0].KVUsedBytes / Gibibyte
 		return fmt.Sprintf("%0.1f GiB", used)
 	},
+	ColorFn: ProcessColour,
 }
 
 var ColumnQueueStorage = components.ColumnImpl[fdb.Process]{
@@ -225,6 +257,7 @@ var ColumnQueueStorage = components.ColumnImpl[fdb.Process]{
 		used := process.Roles[0].QueueUsedBytes / Mibibyte
 		return fmt.Sprintf("%0.1f MiB", used)
 	},
+	ColorFn: ProcessColour,
 }
 
 var ColumnDurabilityRate = components.ColumnImpl[fdb.Process]{
@@ -234,6 +267,7 @@ var ColumnDurabilityRate = components.ColumnImpl[fdb.Process]{
 		durable := process.Roles[0].DurableBytes.Hz / Mibibyte
 		return fmt.Sprintf("%0.1f MiB/s / %0.1f MiB/s", input, durable)
 	},
+	ColorFn: ProcessColour,
 }
 
 var ColumnStorageLag = components.ColumnImpl[fdb.Process]{
@@ -241,6 +275,7 @@ var ColumnStorageLag = components.ColumnImpl[fdb.Process]{
 	DataFn: func(process fdb.Process) string {
 		return fmt.Sprintf("%0.1fs / %0.1fs", process.Roles[0].DataLag.Seconds, process.Roles[0].DurabilityLag.Seconds)
 	},
+	ColorFn: ProcessColour,
 }
 
 var ColumnTotalQueries = components.ColumnImpl[fdb.Process]{
@@ -248,4 +283,5 @@ var ColumnTotalQueries = components.ColumnImpl[fdb.Process]{
 	DataFn: func(process fdb.Process) string {
 		return fmt.Sprintf("%0.1f/s", process.Roles[0].TotalQueries.Hz)
 	},
+	ColorFn: ProcessColour,
 }

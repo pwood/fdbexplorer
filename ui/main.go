@@ -8,7 +8,6 @@ import (
 	"github.com/pwood/fdbexplorer/ui/components"
 	"github.com/rivo/tview"
 	"strconv"
-	"sync"
 )
 
 type UpdatableViews func(root fdb.Root)
@@ -21,7 +20,6 @@ type Main struct {
 	ch  chan data.State
 	app *tview.Application
 
-	cd        *ClusterData
 	updatable []UpdatableViews
 }
 
@@ -31,28 +29,11 @@ func (m *Main) runData() {
 			updateFn(s.ClusterState)
 		}
 
-		m.cd.Update(s.ClusterState)
 		m.app.Draw()
 	}
 }
 
-func UpdateProcesses(f func([]fdb.Process)) func(fdb.Root) {
-	return func(root fdb.Root) {
-		var processes []fdb.Process
-
-		for _, p := range root.Cluster.Processes {
-			processes = append(processes, fdb.AnnotateProcessHealth(p))
-		}
-
-		f(processes)
-	}
-}
-
 func (m *Main) Run() {
-	m.cd = &ClusterData{m: &sync.RWMutex{}}
-	clusterStatsContent := &ClusterStatsTableContent{cd: m.cd}
-	clusterHealthContent := &ClusterHealthTableContent{cd: m.cd}
-
 	pages := tview.NewPages()
 	pages.SetBorderPadding(0, 0, 1, 1)
 
@@ -60,33 +41,45 @@ func (m *Main) Run() {
 
 	localityDataContent := components.NewDataTable[fdb.Process](
 		[]components.ColumnDef[fdb.Process]{ColumnIPAddressPort, ColumnStatus, ColumnMachine, ColumnLocality, ColumnClass, ColumnRoles, ColumnVersion, ColumnUptime},
-		ProcessColour,
 		All,
 		sorter.Sort)
 
 	usageDataContent := components.NewDataTable[fdb.Process](
 		[]components.ColumnDef[fdb.Process]{ColumnIPAddressPort, ColumnRoles, ColumnCPUActivity, ColumnRAMUsage, ColumnNetworkActivity, ColumnDiskUsage, ColumnDiskActivity},
-		ProcessColour,
 		All,
 		sorter.Sort)
 
 	storageDataContent := components.NewDataTable[fdb.Process](
 		[]components.ColumnDef[fdb.Process]{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnKVStorage, ColumnDurabilityRate, ColumnStorageLag, ColumnTotalQueries},
-		ProcessColour,
 		RoleMatch("storage"),
 		sorter.Sort)
 
 	logDataContent := components.NewDataTable[fdb.Process](
 		[]components.ColumnDef[fdb.Process]{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnQueueStorage, ColumnDurabilityRate},
-		ProcessColour,
 		RoleMatch("log"),
 		sorter.Sort)
+
+	clusterHealthContent := components.NewStatsGrid([][]components.ColumnDef[ClusterHealth]{
+		{StatClusterHealth, StatRebalanceQueued},
+		{StatReplicasRemaining, StatRebalanceInflight},
+		{StatRecoveryState, StatEmpty},
+		{StatRecoveryDescription, StatEmpty},
+	})
+
+	clusterStatsContent := components.NewStatsGrid([][]components.ColumnDef[ClusterStats]{
+		{StatTxStarted, StatReads},
+		{StatTxCommitted, StatWrites},
+		{StatTxConflicted, StatBytesRead},
+		{StatTxRejected, StatBytesWritten},
+	})
 
 	m.updatable = []UpdatableViews{
 		UpdateProcesses(localityDataContent.Update),
 		UpdateProcesses(usageDataContent.Update),
 		UpdateProcesses(storageDataContent.Update),
 		UpdateProcesses(logDataContent.Update),
+		UpdateProcessClusterHealth(clusterHealthContent.Update),
+		UpdateProcessClusterStats(clusterStatsContent.Update),
 	}
 
 	locality := tview.NewTable().SetContent(localityDataContent).SetFixed(1, 0).SetSelectable(true, false)
@@ -167,6 +160,8 @@ func (m *Main) Run() {
 			usageDataContent.Sort()
 			storageDataContent.Sort()
 			logDataContent.Sort()
+		case tcell.KeyESC:
+			m.app.Stop()
 		default:
 			return event
 		}
