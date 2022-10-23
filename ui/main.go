@@ -5,69 +5,106 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/pwood/fdbexplorer/data"
 	"github.com/pwood/fdbexplorer/data/fdb"
+	"github.com/pwood/fdbexplorer/ui/components"
 	"github.com/rivo/tview"
 	"strconv"
 	"sync"
 )
 
-func New(ch chan data.State) *View {
-	return &View{ch: ch}
+type UpdatableViews func(root fdb.Root)
+
+func New(ch chan data.State) *Main {
+	return &Main{ch: ch}
 }
 
-type View struct {
+type Main struct {
 	ch  chan data.State
 	app *tview.Application
 
-	cd *ClusterData
+	cd        *ClusterData
+	updatable []UpdatableViews
 }
 
-func (v *View) runData() {
-	for s := range v.ch {
-		v.cd.Update(s.ClusterState)
-		v.app.Draw()
+func (m *Main) runData() {
+	for s := range m.ch {
+		for _, updateFn := range m.updatable {
+			updateFn(s.ClusterState)
+		}
+
+		m.cd.Update(s.ClusterState)
+		m.app.Draw()
 	}
 }
 
-func (v *View) Run() {
-	v.cd = &ClusterData{m: &sync.RWMutex{}, sortBy: SortIPAddress, views: map[string][]fdb.Process{}, viewFns: map[string]func(fdb.Process) bool{}}
-	clusterStatsContent := &ClusterStatsTableContent{cd: v.cd}
-	clusterHealthContent := &ClusterHealthTableContent{cd: v.cd}
+func UpdateProcesses(f func([]fdb.Process)) func(fdb.Root) {
+	return func(root fdb.Root) {
+		var processes []fdb.Process
+
+		for _, p := range root.Cluster.Processes {
+			processes = append(processes, fdb.AnnotateProcessHealth(p))
+		}
+
+		f(processes)
+	}
+}
+
+func (m *Main) Run() {
+	m.cd = &ClusterData{m: &sync.RWMutex{}}
+	clusterStatsContent := &ClusterStatsTableContent{cd: m.cd}
+	clusterHealthContent := &ClusterHealthTableContent{cd: m.cd}
 
 	pages := tview.NewPages()
 	pages.SetBorderPadding(0, 0, 1, 1)
 
-	allView := v.cd.View("all", All)
+	localityDataContent := components.NewDataTable[fdb.Process](
+		[]components.ColumnDef[fdb.Process]{ColumnIPAddressPort, ColumnStatus, ColumnMachine, ColumnLocality, ColumnClass, ColumnRoles, ColumnVersion, ColumnUptime},
+		ProcessColour,
+		All,
+		func(i fdb.Process, j fdb.Process) bool {
+			return false
+		})
 
-	locality := tview.NewTable().SetContent(&ProcessTableContent{
-		pv:      allView,
-		columns: []ColumnId{ColumnIPAddressPort, ColumnStatus, ColumnMachine, ColumnLocality, ColumnClass, ColumnRoles, ColumnVersion, ColumnUptime},
-	})
-	locality.SetFixed(1, 0)
-	locality.SetSelectable(true, false)
+	usageDataContent := components.NewDataTable[fdb.Process](
+		[]components.ColumnDef[fdb.Process]{ColumnIPAddressPort, ColumnRoles, ColumnCPUActivity, ColumnRAMUsage, ColumnNetworkActivity, ColumnDiskUsage, ColumnDiskActivity},
+		ProcessColour,
+		All,
+		func(i fdb.Process, j fdb.Process) bool {
+			return false
+		})
+
+	storageDataContent := components.NewDataTable[fdb.Process](
+		[]components.ColumnDef[fdb.Process]{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnKVStorage, ColumnDurabilityRate, ColumnStorageLag, ColumnTotalQueries},
+		ProcessColour,
+		RoleMatch("storage"),
+		func(i fdb.Process, j fdb.Process) bool {
+			return false
+		})
+
+	logDataContent := components.NewDataTable[fdb.Process](
+		[]components.ColumnDef[fdb.Process]{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnQueueStorage, ColumnDurabilityRate},
+		ProcessColour,
+		RoleMatch("log"),
+		func(i fdb.Process, j fdb.Process) bool {
+			return false
+		})
+
+	m.updatable = []UpdatableViews{
+		UpdateProcesses(localityDataContent.Update),
+		UpdateProcesses(usageDataContent.Update),
+		UpdateProcesses(storageDataContent.Update),
+		UpdateProcesses(logDataContent.Update),
+	}
+
+	locality := tview.NewTable().SetContent(localityDataContent).SetFixed(1, 0).SetSelectable(true, false)
 	pages.AddPage("0", locality, true, true)
 
-	usage := tview.NewTable().SetContent(&ProcessTableContent{
-		pv:      allView,
-		columns: []ColumnId{ColumnIPAddressPort, ColumnRoles, ColumnCPUActivity, ColumnRAMUsage, ColumnNetworkActivity, ColumnDiskUsage, ColumnDiskActivity},
-	})
-	usage.SetFixed(1, 0)
-	usage.SetSelectable(true, false)
+	usage := tview.NewTable().SetContent(usageDataContent).SetFixed(1, 0).SetSelectable(true, false)
 	pages.AddPage("1", usage, true, false)
 
-	storage := tview.NewTable().SetContent(&ProcessTableContent{
-		pv:      v.cd.View("storage", RoleMatch("storage")),
-		columns: []ColumnId{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnKVStorage, ColumnDurabilityRate, ColumnStorageLag, ColumnTotalQueries},
-	})
-	storage.SetFixed(1, 0)
-	storage.SetSelectable(true, false)
+	storage := tview.NewTable().SetContent(storageDataContent).SetFixed(1, 0).SetSelectable(true, false)
 	pages.AddPage("2", storage, true, false)
 
-	logs := tview.NewTable().SetContent(&ProcessTableContent{
-		pv:      v.cd.View("log", RoleMatch("log")),
-		columns: []ColumnId{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnQueueStorage, ColumnDurabilityRate},
-	})
-	logs.SetFixed(1, 0)
-	logs.SetSelectable(true, false)
+	logs := tview.NewTable().SetContent(logDataContent).SetFixed(1, 0).SetSelectable(true, false)
 	pages.AddPage("3", logs, true, false)
 
 	pageIndex := []string{"Locality", "Usage Overview", "Storage Processes", "Log Processes"}
@@ -130,11 +167,11 @@ func (v *View) Run() {
 	grid.AddItem(info, 1, 0, 1, 3, 0, 0, false)
 	grid.AddItem(pages, 2, 0, 1, 3, 0, 0, true)
 	grid.AddItem(help, 3, 0, 1, 3, 0, 0, false)
-
-	sortIndex := []SortKey{SortRole, SortIPAddress, SortClass}
-	sortNow := 0
-
-	v.cd.Sort(sortIndex[sortNow])
+	//
+	//sortIndex := []SortKey{SortRole, SortIPAddress, SortClass}
+	//sortNow := 0
+	//
+	//m.cd.Sort(sortIndex[sortNow])
 
 	grid.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
@@ -142,24 +179,24 @@ func (v *View) Run() {
 			previousSlide()
 		case tcell.KeyRight:
 			nextSlide()
-		case tcell.KeyF1:
-			sortNow++
-			if sortNow >= len(sortIndex) {
-				sortNow = 0
-			}
-
-			v.cd.Sort(sortIndex[sortNow])
+		//case tcell.KeyF1:
+		//	sortNow++
+		//	if sortNow >= len(sortIndex) {
+		//		sortNow = 0
+		//	}
+		//
+		//	m.cd.Sort(sortIndex[sortNow])
 		default:
 			return event
 		}
 		return nil
 	})
 
-	v.app = tview.NewApplication().SetRoot(grid, true).SetFocus(locality)
+	m.app = tview.NewApplication().SetRoot(grid, true).SetFocus(locality)
 
-	go v.runData()
+	go m.runData()
 
-	if err := v.app.Run(); err != nil {
+	if err := m.app.Run(); err != nil {
 		panic(err)
 	}
 }

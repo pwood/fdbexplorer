@@ -85,7 +85,7 @@ type Process struct {
 	Messages         []Message `json:"messages"`
 }
 
-func CalculateProcessHealth(p Process) Process {
+func AnnotateProcessHealth(p Process) Process {
 	p.Health = HealthNormal
 
 	if p.Excluded || p.UnderMaintenance {

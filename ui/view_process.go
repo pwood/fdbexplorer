@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"github.com/gdamore/tcell/v2"
 	"github.com/pwood/fdbexplorer/data/fdb"
-	"github.com/rivo/tview"
-	"sort"
+	"github.com/pwood/fdbexplorer/ui/components"
 	"strings"
 	"sync"
 	"time"
@@ -19,24 +18,11 @@ const (
 	SortRole
 )
 
+// Deprecated
 type ClusterData struct {
 	root fdb.Root
 
-	processes []fdb.Process
-	views     map[string][]fdb.Process
-	viewFns   map[string]func(fdb.Process) bool
-
-	sortBy SortKey
-
 	m *sync.RWMutex
-}
-
-func (c *ClusterData) Sort(sortKey SortKey) {
-	c.m.Lock()
-	defer c.m.Unlock()
-
-	c.sortBy = sortKey
-	c._filterAndSort()
 }
 
 func (c *ClusterData) Update(s fdb.Root) {
@@ -44,56 +30,6 @@ func (c *ClusterData) Update(s fdb.Root) {
 	defer c.m.Unlock()
 
 	c.root = s
-	c.processes = nil
-
-	for _, process := range c.root.Cluster.Processes {
-		c.processes = append(c.processes, process)
-	}
-
-	c._filterAndSort()
-}
-
-func (c *ClusterData) _filterAndSort() {
-	switch c.sortBy {
-	case SortIPAddress:
-		sort.Slice(c.processes, func(i, j int) bool {
-			return strings.Compare(c.processes[i].Address, c.processes[j].Address) < 0
-		})
-	case SortClass:
-		sort.Slice(c.processes, func(i, j int) bool {
-			return strings.Compare(c.processes[i].Class+c.processes[i].Address, c.processes[j].Class+c.processes[j].Address) < 0
-		})
-	case SortRole:
-		sort.Slice(c.processes, func(i, j int) bool {
-			iRole := ""
-			if len(c.processes[i].Roles) > 0 {
-				iRole = c.processes[i].Roles[0].Role
-			}
-
-			jRole := ""
-			if len(c.processes[j].Roles) > 0 {
-				jRole = c.processes[j].Roles[0].Role
-			}
-
-			return strings.Compare(iRole+c.processes[i].Address, jRole+c.processes[j].Address) < 0
-		})
-	}
-
-	for i, proc := range c.processes {
-		c.processes[i] = fdb.CalculateProcessHealth(proc)
-	}
-
-	for n, fn := range c.viewFns {
-		var viewProcesses []fdb.Process
-
-		for _, p := range c.processes {
-			if fn(p) {
-				viewProcesses = append(viewProcesses, p)
-			}
-		}
-
-		c.views[n] = viewProcesses
-	}
 }
 
 func All(_ fdb.Process) bool {
@@ -108,16 +44,6 @@ func RoleMatch(s string) func(fdb.Process) bool {
 			}
 		}
 		return false
-	}
-}
-
-func (c *ClusterData) View(name string, fn func(fdb.Process) bool) *ProcessView {
-	c.views[name] = nil
-	c.viewFns[name] = fn
-
-	return &ProcessView{
-		pd: c,
-		n:  name,
 	}
 }
 
@@ -176,240 +102,178 @@ func (c *ClusterData) Health() ClusterHealth {
 	}
 }
 
-type ProcessView struct {
-	pd *ClusterData
-	n  string
-}
-
-func (p *ProcessView) Count() int {
-	p.pd.m.RLock()
-	defer p.pd.m.RUnlock()
-
-	return len(p.pd.views[p.n])
-}
-
-func (p *ProcessView) Get(i int) fdb.Process {
-	p.pd.m.RLock()
-	defer p.pd.m.RUnlock()
-
-	return p.pd.views[p.n][i]
-}
-
-type ProcessTableContent struct {
-	tview.TableContentReadOnly
-	pv *ProcessView
-
-	columns []ColumnId
-}
-
-func (v *ProcessTableContent) GetCell(row, column int) *tview.TableCell {
-	cid := v.columns[column]
-
-	if row == 0 {
-		return tview.NewTableCell(columns[cid].Name).SetExpansion(1).SetTextColor(tcell.ColorAqua).SetSelectable(false)
-	} else {
-		process := v.pv.Get(row - 1)
-		color := tcell.ColorWhite
-
-		switch process.Health {
-		case fdb.HealthCritical:
-			color = tcell.ColorRed
-		case fdb.HealthWarning:
-			color = tcell.ColorYellow
-		case fdb.HealthExcluded:
-			color = tcell.ColorBlue
-		}
-
-		return tview.NewTableCell(columns[cid].DataFn(process)).SetTextColor(color)
-	}
-}
-
-func (v *ProcessTableContent) GetRowCount() int {
-	return v.pv.Count() + 1
-}
-
-func (v *ProcessTableContent) GetColumnCount() int {
-	return len(v.columns)
-}
-
-type ColumnId int
-
-const (
-	ColumnIPAddressPort ColumnId = iota
-	ColumnStatus
-	ColumnMachine
-	ColumnLocality
-	ColumnClass
-	ColumnRoles
-	ColumnCPUActivity
-	ColumnRAMUsage
-	ColumnDiskUsage
-	ColumnDiskActivity
-	ColumnNetworkActivity
-	ColumnVersion
-	ColumnUptime
-	ColumnKVStorage
-	ColumnQueueStorage
-	ColumnDurabilityRate
-	ColumnStorageLag
-	ColumnTotalQueries
-)
-
-type ColumnDef struct {
-	Name   string
-	DataFn func(fdb.Process) string
-}
-
 const Mibibyte float64 = 1024 * 1024
 const Gibibyte float64 = Mibibyte * 1024
 
-var columns = map[ColumnId]ColumnDef{
-	ColumnIPAddressPort: {
-		Name: "IP Address:Port",
-		DataFn: func(process fdb.Process) string {
-			return process.Address
-		},
-	},
-	ColumnStatus: {
-		Name: "Status",
-		DataFn: func(process fdb.Process) string {
-			var statuses []string
+func ProcessColour(p fdb.Process) tcell.Color {
+	switch p.Health {
+	case fdb.HealthCritical:
+		return tcell.ColorRed
+	case fdb.HealthWarning:
+		return tcell.ColorYellow
+	case fdb.HealthExcluded:
+		return tcell.ColorBlue
+	default:
+		return tcell.ColorWhite
+	}
+}
 
-			if process.Excluded {
-				statuses = append(statuses, "Excluded")
-			}
+var ColumnIPAddressPort = components.ColumnImpl[fdb.Process]{
+	ColName: "IP Address:Port",
+	DataFn: func(process fdb.Process) string {
+		return process.Address
+	},
+}
 
-			if process.Degraded {
-				statuses = append(statuses, "Degraded")
-			}
+var ColumnStatus = components.ColumnImpl[fdb.Process]{
+	ColName: "Status",
+	DataFn: func(process fdb.Process) string {
+		var statuses []string
 
-			if process.UnderMaintenance {
-				statuses = append(statuses, "Maintenance")
-			}
+		if process.Excluded {
+			statuses = append(statuses, "Excluded")
+		}
 
-			if len(process.Messages) > 0 {
-				statuses = append(statuses, "Message")
-			}
+		if process.Degraded {
+			statuses = append(statuses, "Degraded")
+		}
 
-			return strings.Join(statuses, " / ")
-		},
-	},
-	ColumnMachine: {
-		Name: "Machine",
-		DataFn: func(process fdb.Process) string {
-			return process.Locality.MachineID
-		},
-	},
-	ColumnLocality: {
-		Name: "Locality",
-		DataFn: func(process fdb.Process) string {
-			return fmt.Sprintf("%s / %s", process.Locality.DataHall, process.Locality.DCID)
-		},
-	},
-	ColumnClass: {
-		Name: "Class",
-		DataFn: func(process fdb.Process) string {
-			return process.Class
-		},
-	},
-	ColumnRoles: {
-		Name: "Roles",
-		DataFn: func(process fdb.Process) string {
-			var roles []string
+		if process.UnderMaintenance {
+			statuses = append(statuses, "Maintenance")
+		}
 
-			for _, role := range process.Roles {
-				roles = append(roles, role.Role)
-			}
+		if len(process.Messages) > 0 {
+			statuses = append(statuses, "Message")
+		}
 
-			return strings.Join(roles, ", ")
-		},
+		return strings.Join(statuses, " / ")
 	},
-	ColumnRAMUsage: {
-		Name: "RAM Usage",
-		DataFn: func(process fdb.Process) string {
-			memUsage := float64(process.Memory.UsedBytes) / float64(process.Memory.AvailableBytes)
+}
 
-			used := float64(process.Memory.UsedBytes) / Gibibyte
-			available := float64(process.Memory.AvailableBytes) / Gibibyte
+var ColumnMachine = components.ColumnImpl[fdb.Process]{
+	ColName: "Machine",
+	DataFn: func(process fdb.Process) string {
+		return process.Locality.MachineID
+	},
+}
 
-			return fmt.Sprintf("%0.1f%% (%0.1f of %0.1f GiB)", memUsage*100, used, available)
-		},
+var ColumnLocality = components.ColumnImpl[fdb.Process]{
+	ColName: "Locality",
+	DataFn: func(process fdb.Process) string {
+		return fmt.Sprintf("%s / %s", process.Locality.DataHall, process.Locality.DCID)
 	},
-	ColumnDiskUsage: {
-		Name: "Disk Usage",
-		DataFn: func(process fdb.Process) string {
-			usedBytes := process.Disk.TotalBytes - process.Disk.FreeBytes
-			diskUsage := float64(usedBytes) / float64(process.Disk.TotalBytes)
+}
 
-			used := float64(usedBytes) / Gibibyte
-			available := float64(process.Disk.TotalBytes) / Gibibyte
+var ColumnClass = components.ColumnImpl[fdb.Process]{
+	ColName: "Class",
+	DataFn: func(process fdb.Process) string {
+		return process.Class
+	},
+}
+var ColumnRoles = components.ColumnImpl[fdb.Process]{
+	ColName: "Roles",
+	DataFn: func(process fdb.Process) string {
+		var roles []string
 
-			return fmt.Sprintf("%0.1f%% (%0.1f of %0.1f GiB)", diskUsage*100, used, available)
-		},
+		for _, role := range process.Roles {
+			roles = append(roles, role.Role)
+		}
+
+		return strings.Join(roles, ", ")
 	},
-	ColumnCPUActivity: {
-		Name: "CPU Activity",
-		DataFn: func(process fdb.Process) string {
-			return fmt.Sprintf("%0.1f%%", process.CPU.UsageCores*100)
-		},
+}
+
+var ColumnRAMUsage = components.ColumnImpl[fdb.Process]{
+	ColName: "RAM Usage",
+	DataFn: func(process fdb.Process) string {
+		memUsage := float64(process.Memory.UsedBytes) / float64(process.Memory.AvailableBytes)
+
+		used := float64(process.Memory.UsedBytes) / Gibibyte
+		available := float64(process.Memory.AvailableBytes) / Gibibyte
+
+		return fmt.Sprintf("%0.1f%% (%0.1f of %0.1f GiB)", memUsage*100, used, available)
 	},
-	ColumnDiskActivity: {
-		Name: "Disk Activity",
-		DataFn: func(process fdb.Process) string {
-			busy := process.Disk.Busy * 100
-			return fmt.Sprintf("%0.1f RPS / %0.1f WPS / %0.1f%%", process.Disk.Reads.Hz, process.Disk.Writes.Hz, busy)
-		},
+}
+var ColumnDiskUsage = components.ColumnImpl[fdb.Process]{
+	ColName: "Disk Usage",
+	DataFn: func(process fdb.Process) string {
+		usedBytes := process.Disk.TotalBytes - process.Disk.FreeBytes
+		diskUsage := float64(usedBytes) / float64(process.Disk.TotalBytes)
+
+		used := float64(usedBytes) / Gibibyte
+		available := float64(process.Disk.TotalBytes) / Gibibyte
+
+		return fmt.Sprintf("%0.1f%% (%0.1f of %0.1f GiB)", diskUsage*100, used, available)
 	},
-	ColumnNetworkActivity: {
-		Name: "Network Activity",
-		DataFn: func(process fdb.Process) string {
-			return fmt.Sprintf("%0.1f Mbps / %0.1f Mbps", process.Network.MegabitsSent.Hz, process.Network.MegabitsReceived.Hz)
-		},
+}
+var ColumnCPUActivity = components.ColumnImpl[fdb.Process]{
+	ColName: "CPU Activity",
+	DataFn: func(process fdb.Process) string {
+		return fmt.Sprintf("%0.1f%%", process.CPU.UsageCores*100)
 	},
-	ColumnVersion: {
-		Name: "Version",
-		DataFn: func(process fdb.Process) string {
-			return process.Version
-		},
+}
+var ColumnDiskActivity = components.ColumnImpl[fdb.Process]{
+	ColName: "Disk Activity",
+	DataFn: func(process fdb.Process) string {
+		busy := process.Disk.Busy * 100
+		return fmt.Sprintf("%0.1f RPS / %0.1f WPS / %0.1f%%", process.Disk.Reads.Hz, process.Disk.Writes.Hz, busy)
 	},
-	ColumnUptime: {
-		Name: "Uptime",
-		DataFn: func(process fdb.Process) string {
-			return (time.Duration(process.Uptime) * time.Second).String()
-		},
+}
+var ColumnNetworkActivity = components.ColumnImpl[fdb.Process]{
+	ColName: "Network Activity",
+	DataFn: func(process fdb.Process) string {
+		return fmt.Sprintf("%0.1f Mbps / %0.1f Mbps", process.Network.MegabitsSent.Hz, process.Network.MegabitsReceived.Hz)
 	},
-	ColumnKVStorage: {
-		Name: "KV Storage",
-		DataFn: func(process fdb.Process) string {
-			used := process.Roles[0].KVUsedBytes / Gibibyte
-			return fmt.Sprintf("%0.1f GiB", used)
-		},
+}
+var ColumnVersion = components.ColumnImpl[fdb.Process]{
+	ColName: "Version",
+	DataFn: func(process fdb.Process) string {
+		return process.Version
 	},
-	ColumnQueueStorage: {
-		Name: "Queue Storage",
-		DataFn: func(process fdb.Process) string {
-			used := process.Roles[0].QueueUsedBytes / Mibibyte
-			return fmt.Sprintf("%0.1f MiB", used)
-		},
+}
+
+var ColumnUptime = components.ColumnImpl[fdb.Process]{
+	ColName: "Uptime",
+	DataFn: func(process fdb.Process) string {
+		return (time.Duration(process.Uptime) * time.Second).String()
 	},
-	ColumnDurabilityRate: {
-		Name: "Input / Durable Rate",
-		DataFn: func(process fdb.Process) string {
-			input := process.Roles[0].InputBytes.Hz / Mibibyte
-			durable := process.Roles[0].DurableBytes.Hz / Mibibyte
-			return fmt.Sprintf("%0.1f MiB/s / %0.1f MiB/s", input, durable)
-		},
+}
+
+var ColumnKVStorage = components.ColumnImpl[fdb.Process]{
+	ColName: "KV Storage",
+	DataFn: func(process fdb.Process) string {
+		used := process.Roles[0].KVUsedBytes / Gibibyte
+		return fmt.Sprintf("%0.1f GiB", used)
 	},
-	ColumnStorageLag: {
-		Name: "Data / Durability Lag",
-		DataFn: func(process fdb.Process) string {
-			return fmt.Sprintf("%0.1fs / %0.1fs", process.Roles[0].DataLag.Seconds, process.Roles[0].DurabilityLag.Seconds)
-		},
+}
+
+var ColumnQueueStorage = components.ColumnImpl[fdb.Process]{
+	ColName: "Queue Storage",
+	DataFn: func(process fdb.Process) string {
+		used := process.Roles[0].QueueUsedBytes / Mibibyte
+		return fmt.Sprintf("%0.1f MiB", used)
 	},
-	ColumnTotalQueries: {
-		Name: "Queries",
-		DataFn: func(process fdb.Process) string {
-			return fmt.Sprintf("%0.1f/s", process.Roles[0].TotalQueries.Hz)
-		},
+}
+
+var ColumnDurabilityRate = components.ColumnImpl[fdb.Process]{
+	ColName: "Input / Durable Rate",
+	DataFn: func(process fdb.Process) string {
+		input := process.Roles[0].InputBytes.Hz / Mibibyte
+		durable := process.Roles[0].DurableBytes.Hz / Mibibyte
+		return fmt.Sprintf("%0.1f MiB/s / %0.1f MiB/s", input, durable)
+	},
+}
+
+var ColumnStorageLag = components.ColumnImpl[fdb.Process]{
+	ColName: "Data / Durability Lag",
+	DataFn: func(process fdb.Process) string {
+		return fmt.Sprintf("%0.1fs / %0.1fs", process.Roles[0].DataLag.Seconds, process.Roles[0].DurabilityLag.Seconds)
+	},
+}
+
+var ColumnTotalQueries = components.ColumnImpl[fdb.Process]{
+	ColName: "Queries",
+	DataFn: func(process fdb.Process) string {
+		return fmt.Sprintf("%0.1f/s", process.Roles[0].TotalQueries.Hz)
 	},
 }
