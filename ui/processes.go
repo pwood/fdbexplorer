@@ -245,7 +245,8 @@ var ColumnUptime = components.ColumnImpl[fdb.Process]{
 var ColumnKVStorage = components.ColumnImpl[fdb.Process]{
 	ColName: "KV Storage",
 	DataFn: func(process fdb.Process) string {
-		used := process.Roles[0].KVUsedBytes / Gibibyte
+		idx := findRole(process.Roles, "storage")
+		used := process.Roles[idx].KVUsedBytes / Gibibyte
 		return fmt.Sprintf("%0.1f GiB", used)
 	},
 	ColorFn: ProcessColour,
@@ -254,17 +255,30 @@ var ColumnKVStorage = components.ColumnImpl[fdb.Process]{
 var ColumnQueueStorage = components.ColumnImpl[fdb.Process]{
 	ColName: "Queue Storage",
 	DataFn: func(process fdb.Process) string {
-		used := process.Roles[0].QueueUsedBytes / Mibibyte
+		idx := findRole(process.Roles, "log")
+		used := process.Roles[idx].QueueUsedBytes / Mibibyte
 		return fmt.Sprintf("%0.1f MiB", used)
 	},
 	ColorFn: ProcessColour,
 }
 
-var ColumnDurabilityRate = components.ColumnImpl[fdb.Process]{
+var ColumnStorageDurabilityRate = components.ColumnImpl[fdb.Process]{
 	ColName: "Input / Durable Rate",
 	DataFn: func(process fdb.Process) string {
-		input := process.Roles[0].InputBytes.Hz / Mibibyte
-		durable := process.Roles[0].DurableBytes.Hz / Mibibyte
+		idx := findRole(process.Roles, "storage")
+		input := process.Roles[idx].InputBytes.Hz / Mibibyte
+		durable := process.Roles[idx].DurableBytes.Hz / Mibibyte
+		return fmt.Sprintf("%0.1f MiB/s / %0.1f MiB/s", input, durable)
+	},
+	ColorFn: ProcessColour,
+}
+
+var ColumnLogDurabilityRate = components.ColumnImpl[fdb.Process]{
+	ColName: "Input / Durable Rate",
+	DataFn: func(process fdb.Process) string {
+		idx := findRole(process.Roles, "log")
+		input := process.Roles[idx].InputBytes.Hz / Mibibyte
+		durable := process.Roles[idx].DurableBytes.Hz / Mibibyte
 		return fmt.Sprintf("%0.1f MiB/s / %0.1f MiB/s", input, durable)
 	},
 	ColorFn: ProcessColour,
@@ -284,4 +298,14 @@ var ColumnTotalQueries = components.ColumnImpl[fdb.Process]{
 		return fmt.Sprintf("%0.1f/s", process.Roles[0].TotalQueries.Hz)
 	},
 	ColorFn: ProcessColour,
+}
+
+func findRole(roles []fdb.Role, role string) int {
+	for i, straw := range roles {
+		if straw.Role == role {
+			return i
+		}
+	}
+
+	return 0
 }
