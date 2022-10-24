@@ -177,7 +177,7 @@ var ColumnRoles = components.ColumnImpl[fdb.Process]{
 var ColumnRAMUsage = components.ColumnImpl[fdb.Process]{
 	ColName: "RAM Usage",
 	DataFn: func(process fdb.Process) string {
-		memUsage := float64(process.Memory.UsedBytes) / float64(process.Memory.AvailableBytes)
+		memUsage := float64(process.Memory.RSSBytes) / float64(process.Memory.AvailableBytes)
 
 		used := float64(process.Memory.RSSBytes) / Gibibyte
 		available := float64(process.Memory.AvailableBytes) / Gibibyte
