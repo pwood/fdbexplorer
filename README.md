@@ -22,6 +22,10 @@ easier for operators at a glance.
 
 **This tool is very early in development, it still needs more refactoring to make it maintainable - plus more functionality needs to be added.**
 
+## Screencast
+
+<img src="https://raw.githubusercontent.com/pwood/fdbexplorer/main/demo.gif" width="800px" alt="Demonstration of fdbexplorer" title="Demonstration of fdbexplorer" />
+
 ## Install
 
 Download the latest release for your operating system and architecture from: [https://github.com/pwood/fdbexplorer/releases](https://github.com/pwood/fdbexplorer/releases)
