@@ -179,7 +179,7 @@ var ColumnRAMUsage = components.ColumnImpl[fdb.Process]{
 	DataFn: func(process fdb.Process) string {
 		memUsage := float64(process.Memory.UsedBytes) / float64(process.Memory.AvailableBytes)
 
-		used := float64(process.Memory.UsedBytes) / Gibibyte
+		used := float64(process.Memory.RSSBytes) / Gibibyte
 		available := float64(process.Memory.AvailableBytes) / Gibibyte
 
 		return fmt.Sprintf("%0.1f%% (%0.1f of %0.1f GiB)", memUsage*100, used, available)

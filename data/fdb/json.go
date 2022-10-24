@@ -166,4 +166,5 @@ type Network struct {
 type Memory struct {
 	AvailableBytes int `json:"available_bytes"`
 	UsedBytes      int `json:"used_bytes"`
+	RSSBytes       int `json:"rss_bytes"`
 }
