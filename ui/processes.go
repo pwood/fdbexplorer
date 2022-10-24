@@ -287,15 +287,17 @@ var ColumnLogDurabilityRate = components.ColumnImpl[fdb.Process]{
 var ColumnStorageLag = components.ColumnImpl[fdb.Process]{
 	ColName: "Data / Durability Lag",
 	DataFn: func(process fdb.Process) string {
-		return fmt.Sprintf("%0.1fs / %0.1fs", process.Roles[0].DataLag.Seconds, process.Roles[0].DurabilityLag.Seconds)
+		idx := findRole(process.Roles, "storage")
+		return fmt.Sprintf("%0.1fs / %0.1fs", process.Roles[idx].DataLag.Seconds, process.Roles[idx].DurabilityLag.Seconds)
 	},
 	ColorFn: ProcessColour,
 }
 
-var ColumnTotalQueries = components.ColumnImpl[fdb.Process]{
+var ColumnStorageTotalQueries = components.ColumnImpl[fdb.Process]{
 	ColName: "Queries",
 	DataFn: func(process fdb.Process) string {
-		return fmt.Sprintf("%0.1f/s", process.Roles[0].TotalQueries.Hz)
+		idx := findRole(process.Roles, "storage")
+		return fmt.Sprintf("%0.1f/s", process.Roles[idx].TotalQueries.Hz)
 	},
 	ColorFn: ProcessColour,
 }

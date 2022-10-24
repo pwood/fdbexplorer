@@ -80,7 +80,7 @@ func (m *Main) Run() {
 		sorter.Sort)
 
 	storageDataContent := components.NewDataTable[fdb.Process](
-		[]components.ColumnDef[fdb.Process]{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnKVStorage, ColumnStorageDurabilityRate, ColumnStorageLag, ColumnTotalQueries},
+		[]components.ColumnDef[fdb.Process]{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnKVStorage, ColumnStorageDurabilityRate, ColumnStorageLag, ColumnStorageTotalQueries},
 		RoleMatch("storage"),
 		sorter.Sort)
 
