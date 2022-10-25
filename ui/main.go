@@ -8,6 +8,7 @@ import (
 	"github.com/pwood/fdbexplorer/data/fdb"
 	"github.com/pwood/fdbexplorer/ui/components"
 	"github.com/rivo/tview"
+	"os"
 	"strings"
 	"time"
 )
@@ -28,6 +29,16 @@ type Main struct {
 	statusText *tview.TextView
 }
 
+func (m *Main) updateStatus(message string, success bool) {
+	m.statusText.SetText(message)
+
+	if success {
+		m.statusText.SetTextColor(tcell.ColorGreen)
+	} else {
+		m.statusText.SetTextColor(tcell.ColorRed)
+	}
+}
+
 func (m *Main) runData() {
 	for s := range m.ch {
 		var root fdb.Root
@@ -40,17 +51,15 @@ func (m *Main) runData() {
 
 		if s.Err != nil {
 			text = append(text, s.Err.Error())
-			m.statusText.SetTextColor(tcell.ColorRed)
 		} else {
 			text = append(text, fmt.Sprintf("Updated in %dms", s.Duration.Milliseconds()))
-			m.statusText.SetTextColor(tcell.ColorGreen)
 		}
 
 		if s.Interval != 0 {
 			text = append(text, fmt.Sprintf(", next in %s.", s.Interval.String()))
 		}
 
-		m.statusText.SetText(strings.Join(text, ""))
+		m.updateStatus(strings.Join(text, ""), s.Err == nil)
 
 		if s.Err != nil {
 			continue
@@ -64,6 +73,27 @@ func (m *Main) runData() {
 
 		m.app.Draw()
 	}
+}
+
+func (m *Main) snapshotData() (string, error) {
+	fileName := fmt.Sprintf("fdbexplorer-status-snapshot-%d.json", time.Now().Unix())
+
+	f, err := os.Create(fileName)
+	defer func() {
+		_ = f.Close()
+	}()
+
+	if err != nil {
+		return "", fmt.Errorf("open: %w", err)
+	}
+
+	if n, err := f.Write(m.rawJson); err != nil {
+		return "", fmt.Errorf("write: %w", err)
+	} else if n != len(m.rawJson) {
+		return "", fmt.Errorf("write: only %d of %d bytes written", n, len(m.rawJson))
+	}
+
+	return fileName, nil
 }
 
 func (m *Main) Run() {
@@ -162,6 +192,12 @@ func (m *Main) Run() {
 			usageDataContent.Sort()
 			storageDataContent.Sort()
 			logDataContent.Sort()
+		case tcell.KeyF2:
+			if filename, err := m.snapshotData(); err != nil {
+				m.updateStatus(fmt.Sprintf("Failed to write snapshot: %s", err.Error()), false)
+			} else {
+				m.updateStatus(fmt.Sprintf("Snapshot written: %s", filename), true)
+			}
 		case tcell.KeyESC:
 			m.app.Stop()
 		default:
