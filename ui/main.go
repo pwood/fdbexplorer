@@ -115,7 +115,7 @@ func (m *Main) Run() {
 		sorter.Sort)
 
 	logDataContent := components.NewDataTable[fdb.Process](
-		[]components.ColumnDef[fdb.Process]{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnQueueStorage, ColumnLogDurabilityRate},
+		[]components.ColumnDef[fdb.Process]{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnLogQueueLength, ColumnLogDurabilityRate, ColumnLogQueueStorage},
 		RoleMatch("log"),
 		sorter.Sort)
 

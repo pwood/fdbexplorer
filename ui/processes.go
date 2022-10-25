@@ -252,12 +252,22 @@ var ColumnKVStorage = components.ColumnImpl[fdb.Process]{
 	ColorFn: ProcessColour,
 }
 
-var ColumnQueueStorage = components.ColumnImpl[fdb.Process]{
+var ColumnLogQueueStorage = components.ColumnImpl[fdb.Process]{
 	ColName: "Queue Storage",
 	DataFn: func(process fdb.Process) string {
 		idx := findRole(process.Roles, "log")
 		used := process.Roles[idx].QueueUsedBytes / Mibibyte
 		return fmt.Sprintf("%0.1f MiB", used)
+	},
+	ColorFn: ProcessColour,
+}
+
+var ColumnLogQueueLength = components.ColumnImpl[fdb.Process]{
+	ColName: "Queue Length",
+	DataFn: func(process fdb.Process) string {
+		idx := findRole(process.Roles, "log")
+		length := (process.Roles[idx].InputBytes.Counter - process.Roles[idx].DurableBytes.Counter) / Mibibyte
+		return fmt.Sprintf("%0.1f MiB", length)
 	},
 	ColorFn: ProcessColour,
 }
