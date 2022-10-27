@@ -133,6 +133,16 @@ func (m *Main) Run() {
 		{StatTxRejected, StatBytesWritten},
 	})
 
+	backupInstancesContent := components.NewDataTable[fdb.BackupInstance](
+		[]components.ColumnDef[fdb.BackupInstance]{ColumnBackupInstanceId, ColumnBackupInstanceVersion, ColumnBackupInstanceConfiguredWorkers, ColumnBackupInstanceUsedMemory},
+		func(_ fdb.BackupInstance) bool { return true },
+		func(i fdb.BackupInstance, j fdb.BackupInstance) bool { return strings.Compare(i.Id, j.Id) < 0 })
+
+	backupTagsContent := components.NewDataTable[fdb.BackupTag](
+		[]components.ColumnDef[fdb.BackupTag]{ColumnBackupTagId},
+		func(_ fdb.BackupTag) bool { return true },
+		func(i fdb.BackupTag, j fdb.BackupTag) bool { return strings.Compare(i.Id, j.Id) < 0 })
+
 	m.updatable = []UpdatableViews{
 		UpdateProcesses(localityDataContent.Update),
 		UpdateProcesses(usageDataContent.Update),
@@ -140,6 +150,8 @@ func (m *Main) Run() {
 		UpdateProcesses(logDataContent.Update),
 		UpdateProcessClusterHealth(clusterHealthContent.Update),
 		UpdateProcessClusterStats(clusterStatsContent.Update),
+		UpdateBackupInstances(backupInstancesContent.Update),
+		UpdateBackupTags(backupTagsContent.Update),
 	}
 
 	locality := tview.NewTable().SetContent(localityDataContent).SetFixed(1, 0).SetSelectable(true, false)
@@ -147,11 +159,20 @@ func (m *Main) Run() {
 	storage := tview.NewTable().SetContent(storageDataContent).SetFixed(1, 0).SetSelectable(true, false)
 	logs := tview.NewTable().SetContent(logDataContent).SetFixed(1, 0).SetSelectable(true, false)
 
+	backupInstances := tview.NewTable().SetContent(backupInstancesContent).SetFixed(1, 0).SetSelectable(false, false)
+	backupTags := tview.NewTable().SetContent(backupTagsContent).SetFixed(1, 0).SetSelectable(false, false)
+
+	backupFlex := tview.NewFlex()
+	backupFlex.SetDirection(tview.FlexRow)
+	backupFlex.AddItem(backupInstances, 0, 1, false)
+	backupFlex.AddItem(backupTags, 0, 1, false)
+
 	slideShow := components.NewSlideShow()
 	slideShow.Add("Locality", locality)
 	slideShow.Add("Usage Overview", usage)
 	slideShow.Add("Storage Processes", storage)
 	slideShow.Add("Log Processes", logs)
+	slideShow.Add("Backups", backupFlex)
 
 	m.statusText = tview.NewTextView()
 	m.statusText.SetTextAlign(tview.AlignRight)

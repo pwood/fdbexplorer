@@ -36,8 +36,10 @@ func RoleMatch(s string) func(fdb.Process) bool {
 	}
 }
 
-const Mibibyte float64 = 1024 * 1024
-const Gibibyte float64 = Mibibyte * 1024
+const Kibibyte float64 = 1024
+const Mebibyte float64 = Kibibyte * 1024
+const Gibibyte float64 = Mebibyte * 1024
+const Tebibyte float64 = Gibibyte * 1024
 
 type ProcessSorter struct {
 	i int
@@ -256,7 +258,7 @@ var ColumnLogQueueStorage = components.ColumnImpl[fdb.Process]{
 	ColName: "Queue Storage",
 	DataFn: func(process fdb.Process) string {
 		idx := findRole(process.Roles, "log")
-		used := process.Roles[idx].QueueUsedBytes / Mibibyte
+		used := process.Roles[idx].QueueUsedBytes / Mebibyte
 		return fmt.Sprintf("%0.1f MiB", used)
 	},
 	ColorFn: ProcessColour,
@@ -266,7 +268,7 @@ var ColumnLogQueueLength = components.ColumnImpl[fdb.Process]{
 	ColName: "Queue Length",
 	DataFn: func(process fdb.Process) string {
 		idx := findRole(process.Roles, "log")
-		length := (process.Roles[idx].InputBytes.Counter - process.Roles[idx].DurableBytes.Counter) / Mibibyte
+		length := (process.Roles[idx].InputBytes.Counter - process.Roles[idx].DurableBytes.Counter) / Mebibyte
 		return fmt.Sprintf("%0.1f MiB", length)
 	},
 	ColorFn: ProcessColour,
@@ -276,8 +278,8 @@ var ColumnStorageDurabilityRate = components.ColumnImpl[fdb.Process]{
 	ColName: "Input / Durable Rate",
 	DataFn: func(process fdb.Process) string {
 		idx := findRole(process.Roles, "storage")
-		input := process.Roles[idx].InputBytes.Hz / Mibibyte
-		durable := process.Roles[idx].DurableBytes.Hz / Mibibyte
+		input := process.Roles[idx].InputBytes.Hz / Mebibyte
+		durable := process.Roles[idx].DurableBytes.Hz / Mebibyte
 		return fmt.Sprintf("%0.1f MiB/s / %0.1f MiB/s", input, durable)
 	},
 	ColorFn: ProcessColour,
@@ -287,8 +289,8 @@ var ColumnLogDurabilityRate = components.ColumnImpl[fdb.Process]{
 	ColName: "Input / Durable Rate",
 	DataFn: func(process fdb.Process) string {
 		idx := findRole(process.Roles, "log")
-		input := process.Roles[idx].InputBytes.Hz / Mibibyte
-		durable := process.Roles[idx].DurableBytes.Hz / Mibibyte
+		input := process.Roles[idx].InputBytes.Hz / Mebibyte
+		durable := process.Roles[idx].DurableBytes.Hz / Mebibyte
 		return fmt.Sprintf("%0.1f MiB/s / %0.1f MiB/s", input, durable)
 	},
 	ColorFn: ProcessColour,
@@ -320,4 +322,24 @@ func findRole(roles []fdb.Role, role string) int {
 	}
 
 	return 0
+}
+
+func convert(v float64, dp int, perSecond bool) string {
+	f := fmt.Sprintf("%%0.%df %%s%%s", dp)
+	suffix := ""
+	if perSecond {
+		suffix = "/s"
+	}
+
+	if v < Kibibyte {
+		return fmt.Sprintf(f, v, "B", suffix)
+	} else if v < Mebibyte {
+		return fmt.Sprintf(f, v/Kibibyte, "KiB", suffix)
+	} else if v < Gibibyte {
+		return fmt.Sprintf(f, v/Mebibyte, "MiB", suffix)
+	} else if v < Tebibyte {
+		return fmt.Sprintf(f, v/Gibibyte, "GiB", suffix)
+	} else {
+		return fmt.Sprintf(f, v/Tebibyte, "TiB", suffix)
+	}
 }

@@ -11,6 +11,48 @@ type Cluster struct {
 	Messages          []Message          `json:"messages"`
 	RecoveryState     RecoveryState      `json:"recovery_state"`
 	Data              Data               `json:"data"`
+	Layers            Layers             `json:"layers"`
+}
+
+type Layers struct {
+	Backup Backup `json:"backup"`
+}
+
+type Backup struct {
+	Instances map[string]BackupInstance `json:"instances"`
+	Tags      map[string]BackupTag      `json:"tags"`
+}
+
+type BackupInstance struct {
+	Id                string               `json:"id"`
+	BlobStats         BackupBlockStatsBlob `json:"blob_stats"`
+	RSSBytes          float64              `json:"resident_size"`
+	ConfiguredWorkers int                  `json:"configured_workers"`
+	Version           string               `json:"version"`
+}
+
+type BackupBlockStatsBlob struct {
+	Recent BackupBlobStatsIndividual `json:"recent"`
+	Total  BackupBlobStatsIndividual `json:"total"`
+}
+
+type BackupBlobStatsIndividual struct {
+	BytesPerSecond     float64 `json:"bytes_per_second"`
+	BytesSent          float64 `json:"bytes_sent"`
+	RequestsFailed     float64 `json:"requests_failed"`
+	RequestsSuccessful float64 `json:"requests_successful"`
+}
+
+type BackupTag struct {
+	Id                          string  `json:"-"`
+	CurrentContainer            string  `json:"current_container"`
+	CurrentStatus               string  `json:"current_status"`
+	LastRestorableSecondsBehind float64 `json:"last_restorable_seconds_behind"`
+	LastRestorableVersion       int     `json:"last_restorable_version"`
+	MutationLogBytesWritten     int     `json:"mutation_log_bytes_written"`
+	RangeBytesWritten           int     `json:"range_bytes_written"`
+	RunningBackup               bool    `json:"running_backup"`
+	RunningBackupIsRestorable   bool    `json:"running_backup_is_restorable"`
 }
 
 type Data struct {
