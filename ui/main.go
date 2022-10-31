@@ -134,12 +134,12 @@ func (m *Main) Run() {
 	})
 
 	backupInstancesContent := components.NewDataTable[fdb.BackupInstance](
-		[]components.ColumnDef[fdb.BackupInstance]{ColumnBackupInstanceId, ColumnBackupInstanceVersion, ColumnBackupInstanceConfiguredWorkers, ColumnBackupInstanceUsedMemory},
+		[]components.ColumnDef[fdb.BackupInstance]{ColumnBackupInstanceId, ColumnBackupInstanceVersion, ColumnBackupInstanceConfiguredWorkers, ColumnBackupInstanceUsedMemory, ColumnBackupInstanceRecentTransfer, ColumnBackupInstanceRecentOperations},
 		func(_ fdb.BackupInstance) bool { return true },
 		func(i fdb.BackupInstance, j fdb.BackupInstance) bool { return strings.Compare(i.Id, j.Id) < 0 })
 
 	backupTagsContent := components.NewDataTable[fdb.BackupTag](
-		[]components.ColumnDef[fdb.BackupTag]{ColumnBackupTagId},
+		[]components.ColumnDef[fdb.BackupTag]{ColumnBackupTagId, ColumnBackupStatus, ColumnBackupRunning, ColumnBackupRestorable, ColumnBackupSecondsBehind, ColumnBackupRestorableVersion, ColumnBackupRangeBytes, ColumnBackupLogBytes},
 		func(_ fdb.BackupTag) bool { return true },
 		func(i fdb.BackupTag, j fdb.BackupTag) bool { return strings.Compare(i.Id, j.Id) < 0 })
 

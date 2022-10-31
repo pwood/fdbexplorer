@@ -5,7 +5,6 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/pwood/fdbexplorer/data/fdb"
 	"github.com/pwood/fdbexplorer/ui/components"
-	"strings"
 )
 
 type ClusterHealth struct {
@@ -24,11 +23,11 @@ func UpdateProcessClusterHealth(f func(ClusterHealth)) func(fdb.Root) {
 	return func(root fdb.Root) {
 		f(ClusterHealth{
 			Healthy:             root.Cluster.Data.State.Health,
-			Health:              strings.Title(strings.Replace(root.Cluster.Data.State.Name, "_", " ", -1)),
+			Health:              titlify(root.Cluster.Data.State.Name),
 			MinReplicas:         root.Cluster.Data.State.MinReplicasRemaining,
 			RebalanceQueued:     root.Cluster.Data.MovingData.InQueueBytes,
 			RebalanceInFlight:   root.Cluster.Data.MovingData.InFlightBytes,
-			RecoveryState:       strings.Title(strings.Replace(root.Cluster.RecoveryState.Name, "_", " ", -1)),
+			RecoveryState:       titlify(root.Cluster.RecoveryState.Name),
 			RecoveryDescription: root.Cluster.RecoveryState.Description,
 		})
 	}
