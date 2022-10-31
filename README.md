@@ -20,7 +20,7 @@ The output of `status details` from fdbcli is incomplete, and the JSON file prod
 to consume at a glance. `fdbexplorer` is a took in the same vane as `k9s` to make viewing an FoundationDB cluster
 easier for operators at a glance.
 
-**This tool is very early in development, it still needs more refactoring to make it maintainable - plus more functionality needs to be added.**
+This tool is early in its life, suggestions or constructive criticism are welcome.
 
 ## Screencast
 
@@ -36,19 +36,62 @@ Alternatively you may build yourself on a machine that has the `foundationdb-cli
 
 ## Usage
 
-`fdbexplorer` is primarily configured by command line parameters. If `FDB_CLUSTER_FILE` environment variable is set, 
-then it will attempt to find the cluster file at that location automatically (i.e. no command line arguments are required).
+`fdbexplorer` is primarily configured by command line parameters, with no command line parameters by default it will 
+attempt to connect to FoundationDB, see below.
 
 ```shell
 # ./fdbexplorer --help
+fdbexplorer (devel) (rev-3df6e48-dirty)
+
 Usage of ./fdbexplorer:
   -cluster-file string
-    	Location of FoundationDB cluster file. (default "/etc/foundationdb/fdb.cluster")
+    	Location of FoundationDB cluster file, environment variable FDB_CLUSTER_FILE also obeyed. (default "/etc/foundationdb/fdb.cluster")
+  -http-address string
+    	Host and port number for http server to listen on, using 0.0.0.0 for all interface bind. (default "127.0.0.1:8080")
+  -http-enable status json
+    	If the http output should be enabled, making the status json output available on /status/json.
   -input-file string
     	Location of an output of 'status json' to explore, will not connect to FoundationDB.
   -interval duration
     	Interval for polling FoundationDB for status. (default 10s)
+  -url string
+    	URL to fetch status json from periodically.
 ```
+
+### Connect to FoundationDB
+
+If you are using a build that was compiled with the FoundationDB shared library (linux/amd64) `fdbexplorer` will be able
+to connect to your FoundationDB cluster directly.
+
+`fdbexplorer` will use the following search path to find a valid cluster file:
+ * `-cluster-file` command line argument
+ * `FDB_CLUSTER_FILE` environment variable
+ * `/etc/foundationdb/fdb.cluster`
+
+`-interval` will set the frequency to poll FoundationDB.
+
+### Read a copy of `status json`
+
+If your FDB cluster is remote or isolated, you may capture a content of `status json` (e.g. `fdbcli --exec 'status json' > status.json`) 
+and have `fdbexplorer` read that.
+
+> `fdbexplorer -input-file status.json`
+
+### Provide/Read from a HTTP endpoint
+
+For convenience `fdbexplorer` will also act as a **simple unauthenticated** HTTP server sharing out the status json.
+
+> `fdbexplorer -http-enable -http-address 0.0.0.0:8888`
+
+It can then be read by using the following:
+
+> `fdbexplorer -url http://&lt;internal ip&gt;:8888/status/json`
+
+`-interval` will set the frequency that the http server updates data from FoundationDB, and the frequency that UI will
+update from the http server.
+
+You do not have to use `fdbexplorer` to publish the contents of `status json`, however the endpoint you provided must
+return a `200` and a `Content-Type` of `application/json`.
 
 ## Maintainers
 
