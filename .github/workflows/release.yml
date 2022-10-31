@@ -5,10 +5,53 @@ on:
   push:
     tags:
       - "v[0-9].[0-9]+.[0-9]+"
+    branches:
+      - "macos-test"
 
 jobs:
-  release:
-    name: Release
+  release-macos:
+    name: Release macOS
+    runs-on: macos-latest
+    steps:
+      - name: Set up Go 1.19
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.19
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Install FoundationDB Client
+        run: |
+          wget -nv https://github.com/apple/foundationdb/releases/download/7.1.22/FoundationDB-7.1.22.pkg -O /tmp/foundationdb.pkg
+          sudo installer -pkg /tmp/foundationdb.pkg -target /
+
+      - name: Get dependencies
+        run: |
+          go get -v -t -d ./...
+
+      - name: Build darwin/amd64 binary
+        run: |
+          GOOS=darwin GOARCH=amd64 go build -o fdbexplorer-darwin-amd64
+
+      - name: Calculate checksums
+        run: |
+          shasum -a 256 ./fdbexplorer-darwin-amd64 > fdbexplorer-darwin-amd64.sha256
+
+      - name: Release to GitHub Releases
+        uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: false
+          files: |
+            fdbexplorer-*
+            fdbexplorer-*.sha256
+
+  release-linux:
+    name: Release linux
     runs-on: ubuntu-20.04
     steps:
       - name: Set up Go 1.19
@@ -33,7 +76,7 @@ jobs:
 
       - name: Build linux/amd64 binary
         run: |
-          GOOS=linux GOARCH=amd64 go build -o fdbexplorer-linux-amd64        
+          GOOS=linux GOARCH=amd64 go build -o fdbexplorer-linux-amd64
 
       - name: Calculate checksums
         run: |
@@ -45,5 +88,5 @@ jobs:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: false
           files: |
-            fdbexplorer-linux-amd64
-            fdbexplorer-linux-amd64.sha256
+            fdbexplorer-*
+            fdbexplorer-*.sha256
