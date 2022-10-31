@@ -78,13 +78,13 @@ var StatWrites = components.ColumnImpl[ClusterStats]{
 var StatBytesRead = components.ColumnImpl[ClusterStats]{
 	ColName: "Bytes Read",
 	DataFn: func(cs ClusterStats) string {
-		return fmt.Sprintf("%0.1f MiB/s", cs.BytesRead/Mebibyte)
+		return convert(cs.BytesRead, 1, "s")
 	},
 }
 
 var StatBytesWritten = components.ColumnImpl[ClusterStats]{
 	ColName: "Bytes Written",
 	DataFn: func(cs ClusterStats) string {
-		return fmt.Sprintf("%0.1f MiB/s", cs.BytesWritten/Mebibyte)
+		return convert(cs.BytesWritten, 1, "s")
 	},
 }

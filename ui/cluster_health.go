@@ -72,14 +72,14 @@ var StatRecoveryDescription = components.ColumnImpl[ClusterHealth]{
 var StatRebalanceQueued = components.ColumnImpl[ClusterHealth]{
 	ColName: "Rebalance Queued",
 	DataFn: func(h ClusterHealth) string {
-		return fmt.Sprintf("%0.1f MiB", float64(h.RebalanceQueued)/Mebibyte)
+		return convert(float64(h.RebalanceQueued), 1, None)
 	},
 }
 
 var StatRebalanceInflight = components.ColumnImpl[ClusterHealth]{
 	ColName: "Rebalance In-flight",
 	DataFn: func(h ClusterHealth) string {
-		return fmt.Sprintf("%0.1f MiB", float64(h.RebalanceInFlight)/Mebibyte)
+		return convert(float64(h.RebalanceInFlight), 1, None)
 	},
 }
 

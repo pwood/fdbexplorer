@@ -180,11 +180,7 @@ var ColumnRAMUsage = components.ColumnImpl[fdb.Process]{
 	ColName: "RAM Usage",
 	DataFn: func(process fdb.Process) string {
 		memUsage := float64(process.Memory.RSSBytes) / float64(process.Memory.AvailableBytes)
-
-		used := float64(process.Memory.RSSBytes) / Gibibyte
-		available := float64(process.Memory.AvailableBytes) / Gibibyte
-
-		return fmt.Sprintf("%0.1f%% (%0.1f of %0.1f GiB)", memUsage*100, used, available)
+		return fmt.Sprintf("%0.1f%% (%s of %s)", memUsage*100, convert(float64(process.Memory.RSSBytes), 1, None), convert(float64(process.Memory.AvailableBytes), 1, None))
 	},
 	ColorFn: ProcessColour,
 }
@@ -194,11 +190,7 @@ var ColumnDiskUsage = components.ColumnImpl[fdb.Process]{
 	DataFn: func(process fdb.Process) string {
 		usedBytes := process.Disk.TotalBytes - process.Disk.FreeBytes
 		diskUsage := float64(usedBytes) / float64(process.Disk.TotalBytes)
-
-		used := float64(usedBytes) / Gibibyte
-		available := float64(process.Disk.TotalBytes) / Gibibyte
-
-		return fmt.Sprintf("%0.1f%% (%0.1f of %0.1f GiB)", diskUsage*100, used, available)
+		return fmt.Sprintf("%0.1f%% (%s of %s)", diskUsage*100, convert(float64(usedBytes), 1, None), convert(float64(process.Disk.TotalBytes), 1, None))
 	},
 	ColorFn: ProcessColour,
 }
@@ -248,8 +240,7 @@ var ColumnKVStorage = components.ColumnImpl[fdb.Process]{
 	ColName: "KV Storage",
 	DataFn: func(process fdb.Process) string {
 		idx := findRole(process.Roles, "storage")
-		used := process.Roles[idx].KVUsedBytes / Gibibyte
-		return fmt.Sprintf("%0.1f GiB", used)
+		return convert(process.Roles[idx].KVUsedBytes, 1, None)
 	},
 	ColorFn: ProcessColour,
 }
@@ -258,8 +249,7 @@ var ColumnLogQueueStorage = components.ColumnImpl[fdb.Process]{
 	ColName: "Queue Storage",
 	DataFn: func(process fdb.Process) string {
 		idx := findRole(process.Roles, "log")
-		used := process.Roles[idx].QueueUsedBytes / Mebibyte
-		return fmt.Sprintf("%0.1f MiB", used)
+		return convert(process.Roles[idx].QueueUsedBytes, 1, None)
 	},
 	ColorFn: ProcessColour,
 }
@@ -268,8 +258,8 @@ var ColumnLogQueueLength = components.ColumnImpl[fdb.Process]{
 	ColName: "Queue Length",
 	DataFn: func(process fdb.Process) string {
 		idx := findRole(process.Roles, "log")
-		length := (process.Roles[idx].InputBytes.Counter - process.Roles[idx].DurableBytes.Counter) / Mebibyte
-		return fmt.Sprintf("%0.1f MiB", length)
+		length := process.Roles[idx].InputBytes.Counter - process.Roles[idx].DurableBytes.Counter
+		return convert(length, 1, None)
 	},
 	ColorFn: ProcessColour,
 }
@@ -278,9 +268,7 @@ var ColumnStorageDurabilityRate = components.ColumnImpl[fdb.Process]{
 	ColName: "Input / Durable Rate",
 	DataFn: func(process fdb.Process) string {
 		idx := findRole(process.Roles, "storage")
-		input := process.Roles[idx].InputBytes.Hz / Mebibyte
-		durable := process.Roles[idx].DurableBytes.Hz / Mebibyte
-		return fmt.Sprintf("%0.1f MiB/s / %0.1f MiB/s", input, durable)
+		return fmt.Sprintf("%s / %s", convert(process.Roles[idx].InputBytes.Hz, 1, "s"), convert(process.Roles[idx].DurableBytes.Hz, 1, "s"))
 	},
 	ColorFn: ProcessColour,
 }
@@ -289,9 +277,7 @@ var ColumnLogDurabilityRate = components.ColumnImpl[fdb.Process]{
 	ColName: "Input / Durable Rate",
 	DataFn: func(process fdb.Process) string {
 		idx := findRole(process.Roles, "log")
-		input := process.Roles[idx].InputBytes.Hz / Mebibyte
-		durable := process.Roles[idx].DurableBytes.Hz / Mebibyte
-		return fmt.Sprintf("%0.1f MiB/s / %0.1f MiB/s", input, durable)
+		return fmt.Sprintf("%s / %s", convert(process.Roles[idx].InputBytes.Hz, 1, "s"), convert(process.Roles[idx].DurableBytes.Hz, 1, "s"))
 	},
 	ColorFn: ProcessColour,
 }
@@ -324,11 +310,14 @@ func findRole(roles []fdb.Role, role string) int {
 	return 0
 }
 
-func convert(v float64, dp int, perSecond bool) string {
+const None string = ""
+
+func convert(v float64, dp int, perUnit string) string {
 	f := fmt.Sprintf("%%0.%df %%s%%s", dp)
 	suffix := ""
-	if perSecond {
-		suffix = "/s"
+
+	if perUnit != None {
+		suffix = fmt.Sprintf("/%s", perUnit)
 	}
 
 	if v < Kibibyte {

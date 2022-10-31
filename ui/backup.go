@@ -42,7 +42,7 @@ var ColumnBackupInstanceConfiguredWorkers = components.ColumnImpl[fdb.BackupInst
 var ColumnBackupInstanceUsedMemory = components.ColumnImpl[fdb.BackupInstance]{
 	ColName: "RAM Usage",
 	DataFn: func(instance fdb.BackupInstance) string {
-		return convert(instance.RSSBytes, 1, false)
+		return convert(instance.RSSBytes, 1, None)
 	},
 }
 
