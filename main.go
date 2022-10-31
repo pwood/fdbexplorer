@@ -3,16 +3,16 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/carlmjohnson/versioninfo"
 	"github.com/pwood/fdbexplorer/data"
 	"github.com/pwood/fdbexplorer/input"
 	"github.com/pwood/fdbexplorer/output"
 	"os"
-	"runtime/debug"
 )
 
 func main() {
 	header()
-	
+
 	ch := make(chan data.State)
 	defer close(ch)
 
@@ -30,11 +30,7 @@ func main() {
 }
 
 func header() {
-	bi, _ := debug.ReadBuildInfo()
-	version := bi.Main.Version
-	sum := bi.Main.Sum
-
-	fmt.Printf("fdbexplorer %s (%s)\n\n", version, sum)
+	fmt.Printf("fdbexplorer %s (%s)\n\n", versioninfo.Version, versioninfo.Short())
 }
 
 func usage() {
