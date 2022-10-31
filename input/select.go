@@ -5,6 +5,7 @@ import (
 	"github.com/pwood/fdbexplorer/data"
 	"github.com/pwood/fdbexplorer/input/file"
 	"github.com/pwood/fdbexplorer/input/libfdb"
+	"github.com/pwood/fdbexplorer/input/url"
 	"time"
 )
 
@@ -18,6 +19,10 @@ func Select(ch chan data.State) Input {
 	flag.Parse()
 
 	if src, ok := file.NewFile(ch); ok {
+		return src
+	}
+
+	if src, ok := url.NewURL(ch, *interval); ok {
 		return src
 	}
 
