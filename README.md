@@ -30,6 +30,13 @@ This tool is early in its life, suggestions or constructive criticism are welcom
 
 Download the latest release for your operating system and architecture from: [https://github.com/pwood/fdbexplorer/releases](https://github.com/pwood/fdbexplorer/releases)
 
+Build are available for:
+
+* `linux/amd64`
+* `darwin/amd64`
+
+`darwin/arm64` (Mac M1/M2) is waiting for Apple to release an `arm64` version of FoundationDB.
+
 Alternatively you may build yourself on a machine that has the `foundationdb-clients` installed by:
 
 `go build`
