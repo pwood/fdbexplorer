@@ -92,7 +92,7 @@ For convenience `fdbexplorer` will also act as a **simple unauthenticated** HTTP
 
 It can then be read by using the following:
 
-> `fdbexplorer -url http://&lt;internal ip&gt;:8888/status/json`
+> `fdbexplorer -url http://<internal ip>:8888/status/json`
 
 `-interval` will set the frequency that the http server updates data from FoundationDB, and the frequency that UI will
 update from the http server.
