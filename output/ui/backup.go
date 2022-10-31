@@ -3,7 +3,7 @@ package ui
 import (
 	"fmt"
 	"github.com/pwood/fdbexplorer/data/fdb"
-	"github.com/pwood/fdbexplorer/ui/components"
+	"github.com/pwood/fdbexplorer/output/ui/components"
 )
 
 func UpdateBackupInstances(f func(instance []fdb.BackupInstance)) func(fdb.Root) {

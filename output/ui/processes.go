@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/gdamore/tcell/v2"
 	"github.com/pwood/fdbexplorer/data/fdb"
-	"github.com/pwood/fdbexplorer/ui/components"
+	"github.com/pwood/fdbexplorer/output/ui/components"
 	"strings"
 	"time"
 )
