@@ -24,7 +24,12 @@ const (
 )
 
 type ProcessMetadata struct {
-	Health Health
+	Health   Health
+	Selected bool
+}
+
+func (p *ProcessMetadata) ToggleSelected() {
+	p.Selected = !p.Selected
 }
 
 func (p *ProcessMetadata) Update(proc fdb.Process) {
@@ -114,7 +119,7 @@ func (p *ProcessSorter) SortName() string {
 	case SortClass:
 		return "Class"
 	case SortUptime:
-		return "Update"
+		return "Uptime"
 	default:
 		return "Unknown"
 	}
@@ -157,8 +162,27 @@ func ProcessColour(p ProcessData) tcell.Color {
 	case HealthExcluded:
 		return tcell.ColorBlue
 	default:
+		if p.Metadata.Selected {
+			return tcell.ColorGreen
+		}
 		return tcell.ColorWhite
 	}
+}
+
+var ColumnSelected = components.ColumnImpl[ProcessData]{
+	ColName: " ",
+	DataFn: func(pd ProcessData) string {
+		if pd.Metadata.Selected {
+			return "*"
+		}
+		return " "
+	},
+	ColorFn: func(pd ProcessData) tcell.Color {
+		if pd.Metadata.Selected {
+			return tcell.ColorGreen
+		}
+		return ProcessColour(pd)
+	},
 }
 
 var ColumnIPAddressPort = components.ColumnImpl[ProcessData]{

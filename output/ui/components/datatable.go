@@ -31,7 +31,6 @@ func (c ColumnImpl[D]) Color(d D) tcell.Color {
 	if c.ColorFn == nil {
 		return tcell.ColorWhite
 	}
-
 	return c.ColorFn(d)
 }
 
@@ -83,11 +82,24 @@ func (dt *DataTable[D]) Sort() {
 	})
 }
 
+func (dt *DataTable[D]) Get(row int) *D {
+	dt.m.RLock()
+	defer dt.m.RUnlock()
+
+	return &dt.data[row-1]
+}
+
 func (dt *DataTable[D]) GetCell(row, column int) *tview.TableCell {
 	col := dt.columns[column]
 
 	if row == 0 {
-		return tview.NewTableCell(col.Name()).SetExpansion(1).SetTextColor(tcell.ColorAqua).SetSelectable(false)
+		cell := tview.NewTableCell(col.Name()).SetTextColor(tcell.ColorAqua).SetSelectable(false)
+
+		if len(col.Name()) > 1 {
+			cell.SetExpansion(1)
+		}
+
+		return cell
 	} else {
 		dt.m.RLock()
 		defer dt.m.RUnlock()

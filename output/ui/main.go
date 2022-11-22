@@ -101,22 +101,22 @@ func (m *Main) Run() {
 	sorter := &ProcessSorter{}
 
 	localityDataContent := components.NewDataTable[ProcessData](
-		[]components.ColumnDef[ProcessData]{ColumnIPAddressPort, ColumnStatus, ColumnMachine, ColumnLocality, ColumnClass, ColumnRoles, ColumnVersion, ColumnUptime},
+		[]components.ColumnDef[ProcessData]{ColumnSelected, ColumnIPAddressPort, ColumnStatus, ColumnMachine, ColumnLocality, ColumnClass, ColumnRoles, ColumnVersion, ColumnUptime},
 		All,
 		sorter.Sort)
 
 	usageDataContent := components.NewDataTable[ProcessData](
-		[]components.ColumnDef[ProcessData]{ColumnIPAddressPort, ColumnRoles, ColumnCPUActivity, ColumnRAMUsage, ColumnNetworkActivity, ColumnDiskUsage, ColumnDiskActivity},
+		[]components.ColumnDef[ProcessData]{ColumnSelected, ColumnIPAddressPort, ColumnRoles, ColumnCPUActivity, ColumnRAMUsage, ColumnNetworkActivity, ColumnDiskUsage, ColumnDiskActivity},
 		All,
 		sorter.Sort)
 
 	storageDataContent := components.NewDataTable[ProcessData](
-		[]components.ColumnDef[ProcessData]{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnKVStorage, ColumnStorageDurabilityRate, ColumnStorageLag, ColumnStorageTotalQueries},
+		[]components.ColumnDef[ProcessData]{ColumnSelected, ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnKVStorage, ColumnStorageDurabilityRate, ColumnStorageLag, ColumnStorageTotalQueries},
 		RoleMatch("storage"),
 		sorter.Sort)
 
 	logDataContent := components.NewDataTable[ProcessData](
-		[]components.ColumnDef[ProcessData]{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnLogQueueLength, ColumnLogDurabilityRate, ColumnLogQueueStorage},
+		[]components.ColumnDef[ProcessData]{ColumnSelected, ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnLogQueueLength, ColumnLogDurabilityRate, ColumnLogQueueStorage},
 		RoleMatch("log"),
 		sorter.Sort)
 
@@ -157,10 +157,30 @@ func (m *Main) Run() {
 		UpdateBackupTags(backupTagsContent.Update),
 	}
 
+	processDataInput := func(table *tview.Table, content *components.DataTable[ProcessData]) func(event *tcell.EventKey) *tcell.EventKey {
+		return func(event *tcell.EventKey) *tcell.EventKey {
+			switch event.Key() {
+			case tcell.KeyRune:
+				switch event.Rune() {
+				case ' ':
+					row, _ := table.GetSelection()
+					content.Get(row).Metadata.ToggleSelected()
+					return nil
+				}
+			}
+
+			return event
+		}
+	}
+
 	locality := tview.NewTable().SetContent(localityDataContent).SetFixed(1, 0).SetSelectable(true, false)
+	locality.SetInputCapture(processDataInput(locality, localityDataContent))
 	usage := tview.NewTable().SetContent(usageDataContent).SetFixed(1, 0).SetSelectable(true, false)
+	usage.SetInputCapture(processDataInput(usage, usageDataContent))
 	storage := tview.NewTable().SetContent(storageDataContent).SetFixed(1, 0).SetSelectable(true, false)
+	storage.SetInputCapture(processDataInput(storage, storageDataContent))
 	logs := tview.NewTable().SetContent(logDataContent).SetFixed(1, 0).SetSelectable(true, false)
+	logs.SetInputCapture(processDataInput(logs, logDataContent))
 
 	backupInstances := tview.NewTable().SetContent(backupInstancesContent).SetFixed(1, 0).SetSelectable(false, false)
 	backupTags := tview.NewTable().SetContent(backupTagsContent).SetFixed(1, 0).SetSelectable(false, false)
