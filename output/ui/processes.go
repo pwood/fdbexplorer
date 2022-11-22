@@ -93,7 +93,7 @@ type ProcessSorter struct {
 
 func (p *ProcessSorter) Next() {
 	p.i++
-	if p.i > 2 {
+	if p.i > SortUptime {
 		p.i = 0
 	}
 }
@@ -102,6 +102,7 @@ const (
 	SortAddress int = iota
 	SortRole
 	SortClass
+	SortUptime
 )
 
 func (p *ProcessSorter) SortName() string {
@@ -112,6 +113,8 @@ func (p *ProcessSorter) SortName() string {
 		return "Role"
 	case SortClass:
 		return "Class"
+	case SortUptime:
+		return "Update"
 	default:
 		return "Unknown"
 	}
@@ -138,6 +141,8 @@ func (p *ProcessSorter) Sort(i ProcessData, j ProcessData) bool {
 	case SortClass:
 		iKey = i.Process.Class + iKey
 		jKey = j.Process.Class + jKey
+	case SortUptime:
+		return i.Process.Uptime < j.Process.Uptime
 	}
 
 	return strings.Compare(iKey, jKey) < 0
