@@ -99,17 +99,7 @@ type Bytes struct {
 	Written Stats `json:"written"`
 }
 
-type Health int
-
-const (
-	HealthCritical Health = iota
-	HealthWarning
-	HealthNormal
-	HealthExcluded
-)
-
 type Process struct {
-	Health           Health    `json:"-"`
 	Address          string    `json:"address"`
 	Degraded         bool      `json:"degraded"`
 	Excluded         bool      `json:"excluded"`
@@ -127,24 +117,6 @@ type Process struct {
 	Messages         []Message `json:"messages"`
 }
 
-func AnnotateProcessHealth(p Process) Process {
-	p.Health = HealthNormal
-
-	if p.Excluded || p.UnderMaintenance {
-		p.Health = HealthExcluded
-	}
-
-	if len(p.Messages) > 0 {
-		p.Health = HealthWarning
-	}
-
-	if p.Degraded {
-		p.Health = HealthCritical
-	}
-
-	return p
-}
-
 type Message struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
@@ -154,6 +126,7 @@ const (
 	LocalityDataHall   = "data_hall"
 	LocalityDataCenter = "dcid"
 	LocalityMachineID  = "machineid"
+	LocalityProcessID  = "processid"
 )
 
 type Locality map[string]string

@@ -19,7 +19,7 @@ type ClusterHealth struct {
 	RecoveryDescription string
 }
 
-func UpdateProcessClusterHealth(f func(ClusterHealth)) func(fdb.Root) {
+func UpdateClusterHealth(f func(ClusterHealth)) func(fdb.Root) {
 	return func(root fdb.Root) {
 		f(ClusterHealth{
 			Healthy:             root.Cluster.Data.State.Health,

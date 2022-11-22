@@ -23,8 +23,9 @@ type Main struct {
 	ch  chan data.State
 	app *tview.Application
 
-	updatable []UpdatableViews
-	rawJson   []byte
+	processMetadata *processMetadata
+	updatable       []UpdatableViews
+	rawJson         []byte
 
 	statusText *tview.TextView
 }
@@ -99,23 +100,23 @@ func (m *Main) snapshotData() (string, error) {
 func (m *Main) Run() {
 	sorter := &ProcessSorter{}
 
-	localityDataContent := components.NewDataTable[fdb.Process](
-		[]components.ColumnDef[fdb.Process]{ColumnIPAddressPort, ColumnStatus, ColumnMachine, ColumnLocality, ColumnClass, ColumnRoles, ColumnVersion, ColumnUptime},
+	localityDataContent := components.NewDataTable[ProcessData](
+		[]components.ColumnDef[ProcessData]{ColumnIPAddressPort, ColumnStatus, ColumnMachine, ColumnLocality, ColumnClass, ColumnRoles, ColumnVersion, ColumnUptime},
 		All,
 		sorter.Sort)
 
-	usageDataContent := components.NewDataTable[fdb.Process](
-		[]components.ColumnDef[fdb.Process]{ColumnIPAddressPort, ColumnRoles, ColumnCPUActivity, ColumnRAMUsage, ColumnNetworkActivity, ColumnDiskUsage, ColumnDiskActivity},
+	usageDataContent := components.NewDataTable[ProcessData](
+		[]components.ColumnDef[ProcessData]{ColumnIPAddressPort, ColumnRoles, ColumnCPUActivity, ColumnRAMUsage, ColumnNetworkActivity, ColumnDiskUsage, ColumnDiskActivity},
 		All,
 		sorter.Sort)
 
-	storageDataContent := components.NewDataTable[fdb.Process](
-		[]components.ColumnDef[fdb.Process]{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnKVStorage, ColumnStorageDurabilityRate, ColumnStorageLag, ColumnStorageTotalQueries},
+	storageDataContent := components.NewDataTable[ProcessData](
+		[]components.ColumnDef[ProcessData]{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnKVStorage, ColumnStorageDurabilityRate, ColumnStorageLag, ColumnStorageTotalQueries},
 		RoleMatch("storage"),
 		sorter.Sort)
 
-	logDataContent := components.NewDataTable[fdb.Process](
-		[]components.ColumnDef[fdb.Process]{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnLogQueueLength, ColumnLogDurabilityRate, ColumnLogQueueStorage},
+	logDataContent := components.NewDataTable[ProcessData](
+		[]components.ColumnDef[ProcessData]{ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnLogQueueLength, ColumnLogDurabilityRate, ColumnLogQueueStorage},
 		RoleMatch("log"),
 		sorter.Sort)
 
@@ -143,13 +144,15 @@ func (m *Main) Run() {
 		func(_ fdb.BackupTag) bool { return true },
 		func(i fdb.BackupTag, j fdb.BackupTag) bool { return strings.Compare(i.Id, j.Id) < 0 })
 
+	m.processMetadata = &processMetadata{metadata: map[string]*ProcessMetadata{}}
+
 	m.updatable = []UpdatableViews{
-		UpdateProcesses(localityDataContent.Update),
-		UpdateProcesses(usageDataContent.Update),
-		UpdateProcesses(storageDataContent.Update),
-		UpdateProcesses(logDataContent.Update),
-		UpdateProcessClusterHealth(clusterHealthContent.Update),
-		UpdateProcessClusterStats(clusterStatsContent.Update),
+		m.processMetadata.Update(localityDataContent.Update),
+		m.processMetadata.Update(usageDataContent.Update),
+		m.processMetadata.Update(storageDataContent.Update),
+		m.processMetadata.Update(logDataContent.Update),
+		UpdateClusterHealth(clusterHealthContent.Update),
+		UpdateClusterStats(clusterStatsContent.Update),
 		UpdateBackupInstances(backupInstancesContent.Update),
 		UpdateBackupTags(backupTagsContent.Update),
 	}

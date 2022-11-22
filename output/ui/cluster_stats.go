@@ -18,7 +18,7 @@ type ClusterStats struct {
 	BytesWritten float64
 }
 
-func UpdateProcessClusterStats(f func(ClusterStats)) func(fdb.Root) {
+func UpdateClusterStats(f func(ClusterStats)) func(fdb.Root) {
 	return func(root fdb.Root) {
 		f(ClusterStats{
 			TxStarted:    root.Cluster.Workload.Transactions.Started.Hz,
