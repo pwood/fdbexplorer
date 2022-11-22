@@ -244,6 +244,8 @@ func (m *Main) Run() {
 			}
 		case tcell.KeyESC:
 			m.app.Stop()
+		case tcell.KeyCtrlL:
+			go m.app.Draw()
 		default:
 			return event
 		}
