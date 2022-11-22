@@ -150,11 +150,13 @@ type Message struct {
 	Description string `json:"description"`
 }
 
-type Locality struct {
-	DataHall  string `json:"data_hall"`
-	DCID      string `json:"dcid"`
-	MachineID string `json:"machineid"`
-}
+const (
+	LocalityDataHall   = "data_hall"
+	LocalityDataCenter = "dcid"
+	LocalityMachineID  = "machineid"
+)
+
+type Locality map[string]string
 
 type Role struct {
 	Role string `json:"role"`

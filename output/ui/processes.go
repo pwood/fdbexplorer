@@ -47,13 +47,19 @@ func (p *ProcessSorter) Next() {
 	}
 }
 
+const (
+	SortAddress int = iota
+	SortRole
+	SortClass
+)
+
 func (p *ProcessSorter) SortName() string {
 	switch p.i {
-	case 0:
+	case SortAddress:
 		return "Address"
-	case 1:
+	case SortRole:
 		return "Role"
-	case 2:
+	case SortClass:
 		return "Class"
 	default:
 		return "Unknown"
@@ -65,7 +71,7 @@ func (p *ProcessSorter) Sort(i fdb.Process, j fdb.Process) bool {
 	jKey := j.Address
 
 	switch p.i {
-	case 1:
+	case SortRole:
 		iRole := ""
 		if len(i.Roles) > 0 {
 			iRole = i.Roles[0].Role
@@ -78,7 +84,7 @@ func (p *ProcessSorter) Sort(i fdb.Process, j fdb.Process) bool {
 
 		iKey = iRole + iKey
 		jKey = jRole + jKey
-	case 2:
+	case SortClass:
 		iKey = i.Class + iKey
 		jKey = j.Class + jKey
 	}
@@ -136,7 +142,7 @@ var ColumnStatus = components.ColumnImpl[fdb.Process]{
 var ColumnMachine = components.ColumnImpl[fdb.Process]{
 	ColName: "Machine",
 	DataFn: func(process fdb.Process) string {
-		return process.Locality.MachineID
+		return process.Locality[fdb.LocalityMachineID]
 	},
 	ColorFn: ProcessColour,
 }
@@ -144,7 +150,7 @@ var ColumnMachine = components.ColumnImpl[fdb.Process]{
 var ColumnLocality = components.ColumnImpl[fdb.Process]{
 	ColName: "Locality",
 	DataFn: func(process fdb.Process) string {
-		return fmt.Sprintf("%s / %s", process.Locality.DataHall, process.Locality.DCID)
+		return fmt.Sprintf("%s / %s", process.Locality[fdb.LocalityDataHall], process.Locality[fdb.LocalityDataCenter])
 	},
 	ColorFn: ProcessColour,
 }
