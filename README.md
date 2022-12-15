@@ -59,8 +59,6 @@ Usage of ./fdbexplorer:
     	If the http output should be enabled, making the status json output available on /status/json.
   -input-file string
     	Location of an output of 'status json' to explore, will not connect to FoundationDB.
-  -interval duration
-    	Interval for polling FoundationDB for status. (default 10s)
   -url string
     	URL to fetch status json from periodically.
 ```
@@ -74,8 +72,6 @@ to connect to your FoundationDB cluster directly.
  * `-cluster-file` command line argument
  * `FDB_CLUSTER_FILE` environment variable
  * `/etc/foundationdb/fdb.cluster`
-
-`-interval` will set the frequency to poll FoundationDB.
 
 ### Read a copy of `status json`
 
@@ -93,9 +89,6 @@ For convenience `fdbexplorer` will also act as a **simple unauthenticated** HTTP
 It can then be read by using the following:
 
 > `fdbexplorer -url http://<internal ip>:8888/status/json`
-
-`-interval` will set the frequency that the http server updates data from FoundationDB, and the frequency that UI will
-update from the http server.
 
 You do not have to use `fdbexplorer` to publish the contents of `status json`, however the endpoint you provided must
 return a `200` and a `Content-Type` of `application/json`.
