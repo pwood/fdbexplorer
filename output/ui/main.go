@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gdamore/tcell/v2"
-	"github.com/pwood/fdbexplorer/data"
 	"github.com/pwood/fdbexplorer/data/fdb"
+	"github.com/pwood/fdbexplorer/input"
 	"github.com/pwood/fdbexplorer/output/ui/components"
 	"github.com/rivo/tview"
 	"os"
@@ -15,65 +15,71 @@ import (
 
 type UpdatableViews func(root fdb.Root)
 
-func New(ch chan data.State) *Main {
-	return &Main{ch: ch}
+func New(ds input.StatusProvider) *Main {
+	return &Main{ds: ds}
 }
 
 type Main struct {
-	ch  chan data.State
+	ds  input.StatusProvider
 	app *tview.Application
 
-	processMetadata *processMetadata
-	updatable       []UpdatableViews
-	rawJson         []byte
+	metadataStore *metadataStore
+	updatable     []UpdatableViews
+	rawJson       []byte
 
 	statusText *tview.TextView
+	interval   *IntervalControl
 }
 
-func (m *Main) updateStatus(message string, success bool) {
-	m.statusText.SetText(message)
+const (
+	StatusInProgress = tcell.ColorYellow
+	StatusSuccess    = tcell.ColorGreen
+	StatusFailure    = tcell.ColorRed
+)
 
-	if success {
-		m.statusText.SetTextColor(tcell.ColorGreen)
-	} else {
-		m.statusText.SetTextColor(tcell.ColorRed)
-	}
+func (m *Main) updateStatus(message string, colour tcell.Color) {
+	m.app.QueueUpdate(func() {
+		text := []string{"[", time.Now().Format("15:04:05"), "] ", message}
+		m.statusText.SetText(strings.Join(text, "")).SetTextColor(colour)
+	})
 }
 
 func (m *Main) runData() {
-	for s := range m.ch {
-		var root fdb.Root
+	m.updateFromDS()
 
-		if s.Err == nil {
-			s.Err = json.Unmarshal(s.Data, &root)
-		}
+	for {
+		time.Sleep(m.interval.Duration())
+		m.updateFromDS()
+	}
+}
 
-		text := []string{"[", time.Now().Format("15:04:05"), "] "}
+func (m *Main) updateFromDS() {
+	m.updateStatus("Updating data...", StatusInProgress)
+	start := time.Now()
 
-		if s.Err != nil {
-			text = append(text, s.Err.Error())
-		} else {
-			text = append(text, fmt.Sprintf("Updated in %dms", s.Duration.Milliseconds()))
-		}
+	d, err := m.ds.Status()
+	if err != nil {
+		m.updateStatus(fmt.Sprintf("Failed to query data source: %s", err.Error()), StatusFailure)
+		return
+	}
 
-		if s.Interval != 0 {
-			text = append(text, fmt.Sprintf(", next in %s.", s.Interval.String()))
-		}
+	var root fdb.Root
+	if err := json.Unmarshal(d, &root); err != nil {
+		m.updateStatus(fmt.Sprintf("Failed to unmarshal data: %s", err.Error()), StatusFailure)
+		return
+	}
 
-		m.updateStatus(strings.Join(text, ""), s.Err == nil)
+	m.rawJson = d
+	duration := time.Since(start)
 
-		if s.Err != nil {
-			continue
-		}
+	msg := fmt.Sprintf("Updated in %dms, next in %s.", duration.Milliseconds(), m.interval.Duration().String())
+	m.updateStatus(msg, StatusSuccess)
 
-		m.rawJson = s.Data
-
+	m.app.QueueUpdateDraw(func() {
 		for _, updateFn := range m.updatable {
 			updateFn(root)
 		}
-
-		m.app.Draw()
-	}
+	})
 }
 
 func (m *Main) snapshotData() (string, error) {
@@ -98,7 +104,8 @@ func (m *Main) snapshotData() (string, error) {
 }
 
 func (m *Main) Run() {
-	sorter := &ProcessSorter{}
+	sorter := &SortControl{}
+	m.interval = &IntervalControl{}
 
 	localityDataContent := components.NewDataTable[ProcessData](
 		[]components.ColumnDef[ProcessData]{ColumnSelected, ColumnIPAddressPort, ColumnStatus, ColumnMachine, ColumnLocality, ColumnClass, ColumnRoles, ColumnVersion, ColumnUptime},
@@ -144,17 +151,24 @@ func (m *Main) Run() {
 		func(_ fdb.BackupTag) bool { return true },
 		func(i fdb.BackupTag, j fdb.BackupTag) bool { return strings.Compare(i.Id, j.Id) < 0 })
 
-	m.processMetadata = &processMetadata{metadata: map[string]*ProcessMetadata{}}
+	m.metadataStore = &metadataStore{metadata: map[string]*ProcessMetadata{}}
 
 	m.updatable = []UpdatableViews{
-		m.processMetadata.Update(localityDataContent.Update),
-		m.processMetadata.Update(usageDataContent.Update),
-		m.processMetadata.Update(storageDataContent.Update),
-		m.processMetadata.Update(logDataContent.Update),
+		m.metadataStore.Update(localityDataContent.Update),
+		m.metadataStore.Update(usageDataContent.Update),
+		m.metadataStore.Update(storageDataContent.Update),
+		m.metadataStore.Update(logDataContent.Update),
 		UpdateClusterHealth(clusterHealthContent.Update),
 		UpdateClusterStats(clusterStatsContent.Update),
 		UpdateBackupInstances(backupInstancesContent.Update),
 		UpdateBackupTags(backupTagsContent.Update),
+	}
+
+	sortAll := func() {
+		localityDataContent.Sort()
+		usageDataContent.Sort()
+		storageDataContent.Sort()
+		logDataContent.Sort()
 	}
 
 	processDataInput := func(table *tview.Table, content *components.DataTable[ProcessData]) func(event *tcell.EventKey) *tcell.EventKey {
@@ -165,6 +179,7 @@ func (m *Main) Run() {
 				case ' ':
 					row, _ := table.GetSelection()
 					content.Get(row).Metadata.ToggleSelected()
+					sortAll()
 					return nil
 				}
 			}
@@ -203,7 +218,7 @@ func (m *Main) Run() {
 
 	bottom := tview.NewFlex()
 	bottom.SetBorderPadding(0, 0, 1, 1)
-	bottom.AddItem(tview.NewTable().SetContent(&HelpKeys{sorter: sorter}).SetSelectable(false, false), 0, 1, false)
+	bottom.AddItem(tview.NewTable().SetContent(&HelpKeys{sorter: sorter, interval: m.interval}).SetSelectable(false, false), 0, 1, false)
 	bottom.AddItem(m.statusText, 0, 1, false)
 
 	clusterHealthFlex := tview.NewFlex()
@@ -232,20 +247,27 @@ func (m *Main) Run() {
 			slideShow.Next()
 		case tcell.KeyF1:
 			sorter.Next()
-			localityDataContent.Sort()
-			usageDataContent.Sort()
-			storageDataContent.Sort()
-			logDataContent.Sort()
+			sortAll()
 		case tcell.KeyF2:
 			if filename, err := m.snapshotData(); err != nil {
-				m.updateStatus(fmt.Sprintf("Failed to write snapshot: %s", err.Error()), false)
+				m.updateStatus(fmt.Sprintf("Failed to write snapshot: %s", err.Error()), StatusFailure)
 			} else {
-				m.updateStatus(fmt.Sprintf("Snapshot written: %s", filename), true)
+				m.updateStatus(fmt.Sprintf("Snapshot written: %s", filename), StatusSuccess)
 			}
+		case tcell.KeyF3:
+			m.interval.Next()
 		case tcell.KeyESC:
 			m.app.Stop()
 		case tcell.KeyCtrlL:
 			go m.app.Draw()
+		case tcell.KeyRune:
+			switch event.Rune() {
+			case '\\':
+				m.metadataStore.ClearSelected()
+				sortAll()
+			default:
+				return event
+			}
 		default:
 			return event
 		}

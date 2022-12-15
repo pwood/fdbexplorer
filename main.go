@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/carlmjohnson/versioninfo"
-	"github.com/pwood/fdbexplorer/data"
 	"github.com/pwood/fdbexplorer/input"
 	"github.com/pwood/fdbexplorer/output"
 	"os"
@@ -13,16 +12,14 @@ import (
 func main() {
 	header()
 
-	ch := make(chan data.State)
-	defer close(ch)
+	flag.Parse()
 
-	if in := input.Select(ch); in == nil {
+	in := input.Select()
+	if in == nil {
 		usage()
-	} else {
-		go in.Run()
 	}
 
-	if out := output.Select(ch); out == nil {
+	if out := output.Select(in); out == nil {
 		usage()
 	} else {
 		out.Run()

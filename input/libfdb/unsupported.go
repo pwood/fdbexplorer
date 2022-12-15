@@ -3,16 +3,16 @@
 package libfdb
 
 import (
-	"github.com/pwood/fdbexplorer/data"
-	"time"
+	"encoding/json"
 )
 
-func NewFDB(_ chan data.State, _ time.Duration) (*FDB, bool) {
+func NewFDB() (*FDB, bool) {
 	return nil, false
 }
 
 type FDB struct {
 }
 
-func (f *FDB) Run() {
+func (f *FDB) Status() (json.RawMessage, error) {
+	return nil, nil
 }

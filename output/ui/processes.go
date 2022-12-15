@@ -48,16 +48,16 @@ func (p *ProcessMetadata) Update(proc fdb.Process) {
 	}
 }
 
-type processMetadata struct {
+type metadataStore struct {
 	metadata map[string]*ProcessMetadata
 }
 
-func (p *processMetadata) Update(f func([]ProcessData)) func(fdb.Root) {
+func (m *metadataStore) Update(f func([]ProcessData)) func(fdb.Root) {
 	return func(root fdb.Root) {
 		var processes []ProcessData
 
 		for _, proc := range root.Cluster.Processes {
-			meta := p.findOrCreateMetadata(proc.Locality[fdb.LocalityProcessID])
+			meta := m.findOrCreateMetadata(proc.Locality[fdb.LocalityProcessID])
 			meta.Update(proc)
 			processes = append(processes, ProcessData{Process: proc, Metadata: meta})
 		}
@@ -66,12 +66,18 @@ func (p *processMetadata) Update(f func([]ProcessData)) func(fdb.Root) {
 	}
 }
 
-func (p *processMetadata) findOrCreateMetadata(id string) *ProcessMetadata {
-	pd, ok := p.metadata[id]
+func (m *metadataStore) ClearSelected() {
+	for _, pm := range m.metadata {
+		pm.Selected = false
+	}
+}
+
+func (m *metadataStore) findOrCreateMetadata(id string) *ProcessMetadata {
+	pd, ok := m.metadata[id]
 
 	if !ok {
 		pd = &ProcessMetadata{}
-		p.metadata[id] = pd
+		m.metadata[id] = pd
 	}
 
 	return pd
@@ -90,67 +96,6 @@ func RoleMatch(s string) func(ProcessData) bool {
 		}
 		return false
 	}
-}
-
-type ProcessSorter struct {
-	i int
-}
-
-func (p *ProcessSorter) Next() {
-	p.i++
-	if p.i > SortUptime {
-		p.i = 0
-	}
-}
-
-const (
-	SortAddress int = iota
-	SortRole
-	SortClass
-	SortUptime
-)
-
-func (p *ProcessSorter) SortName() string {
-	switch p.i {
-	case SortAddress:
-		return "Address"
-	case SortRole:
-		return "Role"
-	case SortClass:
-		return "Class"
-	case SortUptime:
-		return "Uptime"
-	default:
-		return "Unknown"
-	}
-}
-
-func (p *ProcessSorter) Sort(i ProcessData, j ProcessData) bool {
-	iKey := i.Process.Address
-	jKey := j.Process.Address
-
-	switch p.i {
-	case SortRole:
-		iRole := ""
-		if len(i.Process.Roles) > 0 {
-			iRole = i.Process.Roles[0].Role
-		}
-
-		jRole := ""
-		if len(j.Process.Roles) > 0 {
-			jRole = j.Process.Roles[0].Role
-		}
-
-		iKey = iRole + iKey
-		jKey = jRole + jKey
-	case SortClass:
-		iKey = i.Process.Class + iKey
-		jKey = j.Process.Class + jKey
-	case SortUptime:
-		return i.Process.Uptime < j.Process.Uptime
-	}
-
-	return strings.Compare(iKey, jKey) < 0
 }
 
 func ProcessColour(p ProcessData) tcell.Color {

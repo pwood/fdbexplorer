@@ -3,12 +3,11 @@
 package libfdb
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/apple/foundationdb/bindings/go/src/fdb"
-	"github.com/pwood/fdbexplorer/data"
 	"os"
-	"time"
 )
 
 var clusterFile *string
@@ -22,52 +21,26 @@ func init() {
 	clusterFile = flag.String("cluster-file", defaultClusterFile, "Location of FoundationDB cluster file, environment variable FDB_CLUSTER_FILE also obeyed.")
 }
 
-func NewFDB(ch chan data.State, interval time.Duration) (*FDB, bool) {
-	return &FDB{ch: ch, clusterFile: *clusterFile, interval: interval}, true
+func NewFDB() (*FDB, bool) {
+	fdb.MustAPIVersion(710)
+
+	f := &FDB{clusterFile: *clusterFile}
+	f.db = fdb.MustOpenDatabase(f.clusterFile)
+
+	return f, true
 }
 
 type FDB struct {
-	ch          chan data.State
 	clusterFile string
-	interval    time.Duration
+	db          fdb.Database
 }
 
-func (f *FDB) Run() {
-	fdb.MustAPIVersion(710)
-
-	timer := time.NewTicker(f.interval)
-	db := fdb.MustOpenDatabase(f.clusterFile)
-
-	nowCh := make(chan struct{}, 1)
-	nowCh <- struct{}{}
-
-	for {
-		select {
-		case <-nowCh:
-			f.poll(db, f.ch)
-		case <-timer.C:
-			f.poll(db, f.ch)
-		}
-	}
-}
-
-func (f *FDB) poll(db fdb.Database, ch chan data.State) {
-	start := time.Now()
-
-	d, err := db.Transact(func(transaction fdb.Transaction) (interface{}, error) {
+func (f *FDB) Status() (json.RawMessage, error) {
+	if d, err := f.db.Transact(func(transaction fdb.Transaction) (interface{}, error) {
 		return transaction.Get(fdb.Key("\xff\xff/status/json")).MustGet(), nil
-	})
-
-	if err != nil {
-		ch <- data.State{
-			Err: fmt.Errorf("foundationdb err: %w", err),
-		}
-		return
-	}
-
-	ch <- data.State{
-		Duration: time.Now().Sub(start),
-		Interval: f.interval,
-		Data:     d.([]byte),
+	}); err != nil {
+		return nil, fmt.Errorf("foundationdb err: %w", err)
+	} else {
+		return d.([]byte), nil
 	}
 }

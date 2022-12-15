@@ -5,12 +5,13 @@ import (
 	"github.com/rivo/tview"
 )
 
-var helpKeyText = []string{"Sort", "Snapshot"}
+var helpKeyText = []string{"Sort", "Snapshot", "Interval"}
 
 type HelpKeys struct {
 	tview.TableContentReadOnly
 
-	sorter *ProcessSorter
+	sorter   *SortControl
+	interval *IntervalControl
 }
 
 func (h *HelpKeys) GetCell(_, column int) *tview.TableCell {
@@ -19,6 +20,8 @@ func (h *HelpKeys) GetCell(_, column int) *tview.TableCell {
 	switch column {
 	case 0:
 		text = fmt.Sprintf("%s (%s)", helpKeyText[column], h.sorter.SortName())
+	case 2:
+		text = fmt.Sprintf("%s (%s)", helpKeyText[column], h.interval.Duration().String())
 	default:
 		text = fmt.Sprintf("%s", helpKeyText[column])
 	}
