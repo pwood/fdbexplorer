@@ -5,7 +5,7 @@ import (
 	"github.com/rivo/tview"
 )
 
-var helpKeyText = []string{"Sort", "Snapshot", "Interval"}
+var helpKeyText = []string{"Sort", "Snapshot", "Interval", "-", "Refresh"}
 
 type HelpKeys struct {
 	tview.TableContentReadOnly

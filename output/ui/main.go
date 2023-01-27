@@ -16,12 +16,13 @@ import (
 type UpdatableViews func(root fdb.Root)
 
 func New(ds input.StatusProvider) *Main {
-	return &Main{ds: ds}
+	return &Main{ds: ds, upCh: make(chan struct{})}
 }
 
 type Main struct {
-	ds  input.StatusProvider
-	app *tview.Application
+	ds   input.StatusProvider
+	upCh chan struct{}
+	app  *tview.Application
 
 	metadataStore *metadataStore
 	updatable     []UpdatableViews
@@ -48,7 +49,11 @@ func (m *Main) runData() {
 	m.updateFromDS()
 
 	for {
-		time.Sleep(m.interval.Duration())
+		select {
+		case <-time.After(m.interval.Duration()):
+		case <-m.upCh:
+		}
+
 		m.updateFromDS()
 	}
 }
@@ -256,6 +261,8 @@ func (m *Main) Run() {
 			}
 		case tcell.KeyF3:
 			m.interval.Next()
+		case tcell.KeyF5:
+			m.upCh <- struct{}{}
 		case tcell.KeyESC:
 			m.app.Stop()
 		case tcell.KeyCtrlL:
