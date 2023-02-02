@@ -44,3 +44,35 @@ func (f *FDB) Status() (json.RawMessage, error) {
 		return d.([]byte), nil
 	}
 }
+
+func (f *FDB) ExcludeProcess(excludeKey string) error {
+	if _, err := f.db.Transact(func(transaction fdb.Transaction) (interface{}, error) {
+		if err := transaction.Options().SetAccessSystemKeys(); err != nil {
+			return nil, err
+		}
+
+		transaction.Set(fdb.Key(fmt.Sprintf("\xff\xff/management/excluded/%s", excludeKey)), []byte{})
+
+		return nil, nil
+	}); err != nil {
+		return fmt.Errorf("foundationdb err: %w", err)
+	} else {
+		return nil
+	}
+}
+
+func (f *FDB) IncludeProcess(includeKey string) error {
+	if _, err := f.db.Transact(func(transaction fdb.Transaction) (interface{}, error) {
+		if err := transaction.Options().SetAccessSystemKeys(); err != nil {
+			return nil, err
+		}
+
+		transaction.Clear(fdb.Key(fmt.Sprintf("\xff\xff/management/excluded/%s", includeKey)))
+
+		return nil, nil
+	}); err != nil {
+		return fmt.Errorf("foundationdb err: %w", err)
+	} else {
+		return nil
+	}
+}
