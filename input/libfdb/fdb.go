@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/apple/foundationdb/bindings/go/src/fdb"
 	"os"
+	"strings"
 )
 
 var clusterFile *string
@@ -46,12 +47,12 @@ func (f *FDB) Status() (json.RawMessage, error) {
 }
 
 func (f *FDB) ExcludeProcess(excludeKey string) error {
-	if _, err := f.db.Transact(func(transaction fdb.Transaction) (interface{}, error) {
-		if err := transaction.Options().SetAccessSystemKeys(); err != nil {
+	if _, err := f.db.Transact(func(tr fdb.Transaction) (interface{}, error) {
+		if err := tr.Options().SetAccessSystemKeys(); err != nil {
 			return nil, err
 		}
 
-		transaction.Set(fdb.Key(fmt.Sprintf("\xff\xff/management/excluded/%s", excludeKey)), []byte{})
+		tr.Set(fdb.Key(fmt.Sprintf("\xff\xff/management/excluded/%s", excludeKey)), []byte{})
 
 		return nil, nil
 	}); err != nil {
@@ -62,17 +63,51 @@ func (f *FDB) ExcludeProcess(excludeKey string) error {
 }
 
 func (f *FDB) IncludeProcess(includeKey string) error {
-	if _, err := f.db.Transact(func(transaction fdb.Transaction) (interface{}, error) {
-		if err := transaction.Options().SetAccessSystemKeys(); err != nil {
+	if _, err := f.db.Transact(func(tr fdb.Transaction) (interface{}, error) {
+		if err := tr.Options().SetAccessSystemKeys(); err != nil {
 			return nil, err
 		}
 
-		transaction.Clear(fdb.Key(fmt.Sprintf("\xff\xff/management/excluded/%s", includeKey)))
+		tr.Clear(fdb.Key(fmt.Sprintf("\xff\xff/management/excluded/%s", includeKey)))
 
 		return nil, nil
 	}); err != nil {
 		return fmt.Errorf("foundationdb err: %w", err)
 	} else {
 		return nil
+	}
+}
+
+func (f *FDB) ExcludedProcesses() ([]string, error) {
+	return f.getProcesses("\xff\xff/management/excluded/")
+}
+
+func (f *FDB) ExclusionInProgressProcesses() ([]string, error) {
+	return f.getProcesses("\xff\xff/management/in_progress_exclusion/")
+}
+
+func (f *FDB) getProcesses(keyPrefix string) ([]string, error) {
+	if excluded, err := f.db.Transact(func(tr fdb.Transaction) (interface{}, error) {
+		if err := tr.Options().SetAccessSystemKeys(); err != nil {
+			return nil, err
+		}
+
+		result, err := tr.GetRange(fdb.KeyRange{Begin: fdb.Key(keyPrefix), End: fdb.Key(fmt.Sprintf("%s\xff", keyPrefix))}, fdb.RangeOptions{Mode: fdb.StreamingModeWantAll}).GetSliceWithError()
+
+		if err != nil {
+			return nil, err
+		}
+
+		var processes []string
+
+		for _, v := range result {
+			processes = append(processes, strings.TrimPrefix(v.Key.String(), keyPrefix))
+		}
+
+		return processes, nil
+	}); err != nil {
+		return nil, fmt.Errorf("foundationdb err: %w", err)
+	} else {
+		return excluded.([]string), nil
 	}
 }
