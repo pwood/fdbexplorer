@@ -7,8 +7,8 @@ on:
       - "v[0-9].[0-9]+.[0-9]+"
 
 jobs:
-  build-darwin:
-    name: Build darwin
+  build-darwin-amd64:
+    name: Build darwin (amd64)
     runs-on: macos-latest
     steps:
       - name: Set up Go 1.19
@@ -24,7 +24,7 @@ jobs:
 
       - name: Install FoundationDB Client
         run: |
-          wget -nv https://github.com/apple/foundationdb/releases/download/7.1.22/FoundationDB-7.1.22.pkg -O /tmp/foundationdb.pkg
+          wget -nv https://github.com/apple/foundationdb/releases/download/7.1.27/FoundationDB-7.1.27.pkg -O /tmp/foundationdb.pkg
           sudo installer -pkg /tmp/foundationdb.pkg -target /
 
       - name: Get dependencies
@@ -42,7 +42,7 @@ jobs:
       - name: Archive production artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: darwin-build
+          name: darwin-build-amd64
           path: |
             fdbexplorer-*
 
@@ -63,7 +63,7 @@ jobs:
 
       - name: Install FoundationDB Client
         run: |
-          wget -nv https://github.com/apple/foundationdb/releases/download/7.1.22/foundationdb-clients_7.1.22-1_amd64.deb -O /tmp/foundationdb-clients.deb
+          wget -nv https://github.com/apple/foundationdb/releases/download/7.1.27/foundationdb-clients_7.1.27-1_amd64.deb -O /tmp/foundationdb-clients.deb
           sudo dpkg -i /tmp/foundationdb-clients.deb
 
       - name: Get dependencies
@@ -89,7 +89,7 @@ jobs:
     name: Release to GitHub
     needs:
       - build-linux
-      - build-darwin
+      - build-darwin-amd64
     runs-on: ubuntu-20.04
     steps:
       - name: Download all artifacts

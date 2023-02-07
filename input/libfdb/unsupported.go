@@ -1,4 +1,4 @@
-//go:build !(cgo && amd64 && (linux || darwin))
+//go:build cgo && arm64 && linux
 
 package libfdb
 
