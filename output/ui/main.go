@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-type UpdatableViews func(root fdb.Root)
+type UpdatableViews func(dsu DataSourceUpdate)
 
 func New(ds input.StatusProvider) *Main {
 	return &Main{ds: ds, upCh: make(chan struct{})}
@@ -80,9 +80,13 @@ func (m *Main) updateFromDS() {
 	msg := fmt.Sprintf("Updated in %dms, next in %s.", duration.Milliseconds(), m.interval.Duration().String())
 	m.updateStatus(msg, StatusSuccess)
 
+	dsu := DataSourceUpdate{
+		root: root,
+	}
+
 	m.app.QueueUpdateDraw(func() {
 		for _, updateFn := range m.updatable {
-			updateFn(root)
+			updateFn(dsu)
 		}
 	})
 }

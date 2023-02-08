@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"github.com/pwood/fdbexplorer/data/fdb"
 	"github.com/pwood/fdbexplorer/output/ui/components"
 )
 
@@ -18,17 +17,17 @@ type ClusterStats struct {
 	BytesWritten float64
 }
 
-func UpdateClusterStats(f func(ClusterStats)) func(fdb.Root) {
-	return func(root fdb.Root) {
+func UpdateClusterStats(f func(ClusterStats)) func(DataSourceUpdate) {
+	return func(dsu DataSourceUpdate) {
 		f(ClusterStats{
-			TxStarted:    root.Cluster.Workload.Transactions.Started.Hz,
-			TxCommitted:  root.Cluster.Workload.Transactions.Committed.Hz,
-			TxConflicted: root.Cluster.Workload.Transactions.Conflicted.Hz,
-			TxRejected:   root.Cluster.Workload.Transactions.RejectedForQueuedTooLong.Hz,
-			Reads:        root.Cluster.Workload.Operations.Reads.Hz,
-			Writes:       root.Cluster.Workload.Operations.Writes.Hz,
-			BytesRead:    root.Cluster.Workload.Bytes.Read.Hz,
-			BytesWritten: root.Cluster.Workload.Bytes.Written.Hz,
+			TxStarted:    dsu.root.Cluster.Workload.Transactions.Started.Hz,
+			TxCommitted:  dsu.root.Cluster.Workload.Transactions.Committed.Hz,
+			TxConflicted: dsu.root.Cluster.Workload.Transactions.Conflicted.Hz,
+			TxRejected:   dsu.root.Cluster.Workload.Transactions.RejectedForQueuedTooLong.Hz,
+			Reads:        dsu.root.Cluster.Workload.Operations.Reads.Hz,
+			Writes:       dsu.root.Cluster.Workload.Operations.Writes.Hz,
+			BytesRead:    dsu.root.Cluster.Workload.Bytes.Read.Hz,
+			BytesWritten: dsu.root.Cluster.Workload.Bytes.Written.Hz,
 		})
 	}
 }

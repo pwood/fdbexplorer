@@ -3,7 +3,6 @@ package ui
 import (
 	"fmt"
 	"github.com/gdamore/tcell/v2"
-	"github.com/pwood/fdbexplorer/data/fdb"
 	"github.com/pwood/fdbexplorer/output/ui/components"
 )
 
@@ -19,16 +18,16 @@ type ClusterHealth struct {
 	RecoveryDescription string
 }
 
-func UpdateClusterHealth(f func(ClusterHealth)) func(fdb.Root) {
-	return func(root fdb.Root) {
+func UpdateClusterHealth(f func(ClusterHealth)) func(DataSourceUpdate) {
+	return func(dsu DataSourceUpdate) {
 		f(ClusterHealth{
-			Healthy:             root.Cluster.Data.State.Health,
-			Health:              titlify(root.Cluster.Data.State.Name),
-			MinReplicas:         root.Cluster.Data.State.MinReplicasRemaining,
-			RebalanceQueued:     root.Cluster.Data.MovingData.InQueueBytes,
-			RebalanceInFlight:   root.Cluster.Data.MovingData.InFlightBytes,
-			RecoveryState:       titlify(root.Cluster.RecoveryState.Name),
-			RecoveryDescription: root.Cluster.RecoveryState.Description,
+			Healthy:             dsu.root.Cluster.Data.State.Health,
+			Health:              titlify(dsu.root.Cluster.Data.State.Name),
+			MinReplicas:         dsu.root.Cluster.Data.State.MinReplicasRemaining,
+			RebalanceQueued:     dsu.root.Cluster.Data.MovingData.InQueueBytes,
+			RebalanceInFlight:   dsu.root.Cluster.Data.MovingData.InFlightBytes,
+			RecoveryState:       titlify(dsu.root.Cluster.RecoveryState.Name),
+			RecoveryDescription: dsu.root.Cluster.RecoveryState.Description,
 		})
 	}
 }

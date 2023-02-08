@@ -24,8 +24,9 @@ const (
 )
 
 type ProcessMetadata struct {
-	Health   Health
-	Selected bool
+	Health              Health
+	Selected            bool
+	ExclusionInProgress bool
 }
 
 func (p *ProcessMetadata) ToggleSelected() {
@@ -48,15 +49,21 @@ func (p *ProcessMetadata) Update(proc fdb.Process) {
 	}
 }
 
+type DataSourceUpdate struct {
+	root                fdb.Root
+	excludedProcesses   []string
+	exclusionInProgress []string
+}
+
 type metadataStore struct {
 	metadata map[string]*ProcessMetadata
 }
 
-func (m *metadataStore) Update(f func([]ProcessData)) func(fdb.Root) {
-	return func(root fdb.Root) {
+func (m *metadataStore) Update(f func([]ProcessData)) func(DataSourceUpdate) {
+	return func(dsu DataSourceUpdate) {
 		var processes []ProcessData
 
-		for _, proc := range root.Cluster.Processes {
+		for _, proc := range dsu.root.Cluster.Processes {
 			meta := m.findOrCreateMetadata(proc.Locality[fdb.LocalityProcessID])
 			meta.Update(proc)
 			processes = append(processes, ProcessData{Process: proc, Metadata: meta})
