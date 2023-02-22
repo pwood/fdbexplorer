@@ -101,7 +101,8 @@ func (f *FDB) getProcesses(keyPrefix string) ([]string, error) {
 		var processes []string
 
 		for _, v := range result {
-			processes = append(processes, strings.TrimPrefix(v.Key.String(), keyPrefix))
+			keyParts := strings.Split(v.Key.String(), "/")
+			processes = append(processes, keyParts[len(keyParts)-1])
 		}
 
 		return processes, nil

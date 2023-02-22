@@ -21,6 +21,7 @@ const (
 	HealthWarning
 	HealthNormal
 	HealthExcluded
+	HealthExcludedOnly
 )
 
 type ProcessMetadata struct {
@@ -64,9 +65,30 @@ func (m *metadataStore) Update(f func([]ProcessData)) func(DataSourceUpdate) {
 		var processes []ProcessData
 
 		for _, proc := range dsu.root.Cluster.Processes {
-			meta := m.findOrCreateMetadata(proc.Locality[fdb.LocalityProcessID])
+			meta := m.findOrCreateMetadata(proc.Address)
 			meta.Update(proc)
+			meta.ExclusionInProgress = false
 			processes = append(processes, ProcessData{Process: proc, Metadata: meta})
+		}
+
+		for _, excluding := range dsu.exclusionInProgress {
+			meta := m.findOrCreateMetadata(excluding)
+			meta.ExclusionInProgress = true
+		}
+
+		for _, excluded := range dsu.excludedProcesses {
+			found := false
+
+			for _, p := range processes {
+				if p.Process.Address == excluded {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				processes = append(processes, ProcessData{Process: fdb.Process{Address: excluded, Excluded: true}, Metadata: &ProcessMetadata{Health: HealthExcludedOnly}})
+			}
 		}
 
 		f(processes)
@@ -112,7 +134,13 @@ func ProcessColour(p ProcessData) tcell.Color {
 	case HealthWarning:
 		return tcell.ColorYellow
 	case HealthExcluded:
-		return tcell.ColorBlue
+		if p.Metadata.ExclusionInProgress {
+			return tcell.ColorOlive
+		} else {
+			return tcell.ColorBlue
+		}
+	case HealthExcludedOnly:
+		return tcell.ColorPurple
 	default:
 		if p.Metadata.Selected {
 			return tcell.ColorGreen

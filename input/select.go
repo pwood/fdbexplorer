@@ -11,6 +11,13 @@ type StatusProvider interface {
 	Status() (json.RawMessage, error)
 }
 
+type ExclusionManager interface {
+	IncludeProcess(includeKey string) error
+	ExcludeProcess(excludeKey string) error
+	ExcludedProcesses() ([]string, error)
+	ExclusionInProgressProcesses() ([]string, error)
+}
+
 func Select() StatusProvider {
 	if src, ok := file.NewFile(); ok {
 		return src

@@ -64,7 +64,7 @@ func (m *Main) updateFromDS() {
 
 	d, err := m.ds.Status()
 	if err != nil {
-		m.updateStatus(fmt.Sprintf("Failed to query data source: %s", err.Error()), StatusFailure)
+		m.updateStatus(fmt.Sprintf("Failed to query root data source: %s", err.Error()), StatusFailure)
 		return
 	}
 
@@ -74,15 +74,31 @@ func (m *Main) updateFromDS() {
 		return
 	}
 
+	dsu := DataSourceUpdate{
+		root: root,
+	}
+
+	if em, ok := m.ds.(input.ExclusionManager); ok {
+		if excludedProcesses, err := em.ExcludedProcesses(); err != nil {
+			m.updateStatus(fmt.Sprintf("Failed to query excluded processes data source: %s", err.Error()), StatusFailure)
+			return
+		} else {
+			dsu.excludedProcesses = excludedProcesses
+		}
+
+		if exclusionInProgress, err := em.ExclusionInProgressProcesses(); err != nil {
+			m.updateStatus(fmt.Sprintf("Failed to query exclusion in progress data source: %s", err.Error()), StatusFailure)
+			return
+		} else {
+			dsu.exclusionInProgress = exclusionInProgress
+		}
+	}
+
 	m.rawJson = d
 	duration := time.Since(start)
 
 	msg := fmt.Sprintf("Updated in %dms, next in %s.", duration.Milliseconds(), m.interval.Duration().String())
 	m.updateStatus(msg, StatusSuccess)
-
-	dsu := DataSourceUpdate{
-		root: root,
-	}
 
 	m.app.QueueUpdateDraw(func() {
 		for _, updateFn := range m.updatable {
@@ -115,6 +131,8 @@ func (m *Main) snapshotData() (string, error) {
 func (m *Main) Run() {
 	sorter := &SortControl{}
 	m.interval = &IntervalControl{}
+
+	_, haveEM := m.ds.(input.ExclusionManager)
 
 	localityDataContent := components.NewDataTable[ProcessData](
 		[]components.ColumnDef[ProcessData]{ColumnSelected, ColumnIPAddressPort, ColumnStatus, ColumnMachine, ColumnLocality, ColumnClass, ColumnRoles, ColumnVersion, ColumnUptime},
@@ -227,7 +245,7 @@ func (m *Main) Run() {
 
 	bottom := tview.NewFlex()
 	bottom.SetBorderPadding(0, 0, 1, 1)
-	bottom.AddItem(tview.NewTable().SetContent(&HelpKeys{sorter: sorter, interval: m.interval}).SetSelectable(false, false), 0, 1, false)
+	bottom.AddItem(tview.NewTable().SetContent(&HelpKeys{sorter: sorter, interval: m.interval, haveEM: haveEM}).SetSelectable(false, false), 0, 1, false)
 	bottom.AddItem(m.statusText, 0, 1, false)
 
 	clusterHealthFlex := tview.NewFlex()
@@ -267,6 +285,14 @@ func (m *Main) Run() {
 			m.interval.Next()
 		case tcell.KeyF5:
 			m.upCh <- struct{}{}
+		case tcell.KeyF7:
+			if haveEM {
+
+			}
+		case tcell.KeyF8:
+			if haveEM {
+
+			}
 		case tcell.KeyESC:
 			m.app.Stop()
 		case tcell.KeyCtrlL:
