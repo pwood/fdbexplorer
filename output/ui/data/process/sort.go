@@ -1,7 +1,6 @@
-package ui
+package process
 
 import (
-	"github.com/pwood/fdbexplorer/output/ui/data"
 	"strings"
 )
 
@@ -44,7 +43,7 @@ func (p *SortControl) SortName() string {
 	}
 }
 
-func (p *SortControl) Sort(i data.Process, j data.Process) bool {
+func (p *SortControl) Sort(i Process, j Process) bool {
 	iKey := i.FDBData.Address
 	jKey := j.FDBData.Address
 

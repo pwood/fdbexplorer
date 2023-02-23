@@ -5,17 +5,17 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/pwood/fdbexplorer/data/fdb"
 	"github.com/pwood/fdbexplorer/output/ui/components"
-	"github.com/pwood/fdbexplorer/output/ui/data"
+	"github.com/pwood/fdbexplorer/output/ui/data/process"
 	"strings"
 	"time"
 )
 
-func All(_ data.Process) bool {
+func All(_ process.Process) bool {
 	return true
 }
 
-func RoleMatch(s string) func(data.Process) bool {
-	return func(process data.Process) bool {
+func RoleMatch(s string) func(process.Process) bool {
+	return func(process process.Process) bool {
 		for _, r := range process.FDBData.Roles {
 			if r.Role == s {
 				return true
@@ -25,19 +25,19 @@ func RoleMatch(s string) func(data.Process) bool {
 	}
 }
 
-func ProcessColour(p data.Process) tcell.Color {
+func ProcessColour(p process.Process) tcell.Color {
 	switch p.Metadata.Health {
-	case data.HealthCritical:
+	case process.HealthCritical:
 		return tcell.ColorRed
-	case data.HealthWarning:
+	case process.HealthWarning:
 		return tcell.ColorYellow
-	case data.HealthExcluded:
+	case process.HealthExcluded:
 		if p.Metadata.ExclusionInProgress {
 			return tcell.ColorOlive
 		} else {
 			return tcell.ColorBlue
 		}
-	case data.HealthExcludedOnly:
+	case process.HealthExcludedOnly:
 		return tcell.ColorPurple
 	default:
 		if p.Metadata.Selected {
@@ -47,15 +47,15 @@ func ProcessColour(p data.Process) tcell.Color {
 	}
 }
 
-var ColumnSelected = components.ColumnImpl[data.Process]{
+var ColumnSelected = components.ColumnImpl[process.Process]{
 	ColName: " ",
-	DataFn: func(pd data.Process) string {
+	DataFn: func(pd process.Process) string {
 		if pd.Metadata.Selected {
 			return "*"
 		}
 		return " "
 	},
-	ColorFn: func(pd data.Process) tcell.Color {
+	ColorFn: func(pd process.Process) tcell.Color {
 		if pd.Metadata.Selected {
 			return tcell.ColorGreen
 		}
@@ -63,17 +63,17 @@ var ColumnSelected = components.ColumnImpl[data.Process]{
 	},
 }
 
-var ColumnIPAddressPort = components.ColumnImpl[data.Process]{
+var ColumnIPAddressPort = components.ColumnImpl[process.Process]{
 	ColName: "IP Address:Port",
-	DataFn: func(pd data.Process) string {
+	DataFn: func(pd process.Process) string {
 		return pd.FDBData.Address
 	},
 	ColorFn: ProcessColour,
 }
 
-var ColumnStatus = components.ColumnImpl[data.Process]{
+var ColumnStatus = components.ColumnImpl[process.Process]{
 	ColName: "Status",
-	DataFn: func(pd data.Process) string {
+	DataFn: func(pd process.Process) string {
 		var statuses []string
 
 		if pd.FDBData.Excluded {
@@ -97,33 +97,33 @@ var ColumnStatus = components.ColumnImpl[data.Process]{
 	ColorFn: ProcessColour,
 }
 
-var ColumnMachine = components.ColumnImpl[data.Process]{
+var ColumnMachine = components.ColumnImpl[process.Process]{
 	ColName: "Machine",
-	DataFn: func(pd data.Process) string {
+	DataFn: func(pd process.Process) string {
 		return pd.FDBData.Locality[fdb.LocalityMachineID]
 	},
 	ColorFn: ProcessColour,
 }
 
-var ColumnLocality = components.ColumnImpl[data.Process]{
+var ColumnLocality = components.ColumnImpl[process.Process]{
 	ColName: "Locality",
-	DataFn: func(pd data.Process) string {
+	DataFn: func(pd process.Process) string {
 		return fmt.Sprintf("%s / %s", pd.FDBData.Locality[fdb.LocalityDataHall], pd.FDBData.Locality[fdb.LocalityDataCenter])
 	},
 	ColorFn: ProcessColour,
 }
 
-var ColumnClass = components.ColumnImpl[data.Process]{
+var ColumnClass = components.ColumnImpl[process.Process]{
 	ColName: "Class",
-	DataFn: func(pd data.Process) string {
+	DataFn: func(pd process.Process) string {
 		return pd.FDBData.Class
 	},
 	ColorFn: ProcessColour,
 }
 
-var ColumnRoles = components.ColumnImpl[data.Process]{
+var ColumnRoles = components.ColumnImpl[process.Process]{
 	ColName: "Roles",
-	DataFn: func(pd data.Process) string {
+	DataFn: func(pd process.Process) string {
 		var roles []string
 
 		for _, role := range pd.FDBData.Roles {
@@ -135,18 +135,18 @@ var ColumnRoles = components.ColumnImpl[data.Process]{
 	ColorFn: ProcessColour,
 }
 
-var ColumnRAMUsage = components.ColumnImpl[data.Process]{
+var ColumnRAMUsage = components.ColumnImpl[process.Process]{
 	ColName: "RAM Usage",
-	DataFn: func(pd data.Process) string {
+	DataFn: func(pd process.Process) string {
 		memUsage := float64(pd.FDBData.Memory.RSSBytes) / float64(pd.FDBData.Memory.AvailableBytes)
 		return fmt.Sprintf("%0.1f%% (%s of %s)", memUsage*100, Convert(float64(pd.FDBData.Memory.RSSBytes), 1, None), Convert(float64(pd.FDBData.Memory.AvailableBytes), 1, None))
 	},
 	ColorFn: ProcessColour,
 }
 
-var ColumnDiskUsage = components.ColumnImpl[data.Process]{
+var ColumnDiskUsage = components.ColumnImpl[process.Process]{
 	ColName: "Disk Usage",
-	DataFn: func(pd data.Process) string {
+	DataFn: func(pd process.Process) string {
 		usedBytes := pd.FDBData.Disk.TotalBytes - pd.FDBData.Disk.FreeBytes
 		diskUsage := float64(usedBytes) / float64(pd.FDBData.Disk.TotalBytes)
 		return fmt.Sprintf("%0.1f%% (%s of %s)", diskUsage*100, Convert(float64(usedBytes), 1, None), Convert(float64(pd.FDBData.Disk.TotalBytes), 1, None))
@@ -154,68 +154,68 @@ var ColumnDiskUsage = components.ColumnImpl[data.Process]{
 	ColorFn: ProcessColour,
 }
 
-var ColumnCPUActivity = components.ColumnImpl[data.Process]{
+var ColumnCPUActivity = components.ColumnImpl[process.Process]{
 	ColName: "CPU Activity",
-	DataFn: func(pd data.Process) string {
+	DataFn: func(pd process.Process) string {
 		return fmt.Sprintf("%0.1f%%", pd.FDBData.CPU.UsageCores*100)
 	},
 	ColorFn: ProcessColour,
 }
 
-var ColumnDiskActivity = components.ColumnImpl[data.Process]{
+var ColumnDiskActivity = components.ColumnImpl[process.Process]{
 	ColName: "Disk Activity",
-	DataFn: func(pd data.Process) string {
+	DataFn: func(pd process.Process) string {
 		busy := pd.FDBData.Disk.Busy * 100
 		return fmt.Sprintf("%0.1f RPS / %0.1f WPS / %0.1f%%", pd.FDBData.Disk.Reads.Hz, pd.FDBData.Disk.Writes.Hz, busy)
 	},
 	ColorFn: ProcessColour,
 }
 
-var ColumnNetworkActivity = components.ColumnImpl[data.Process]{
+var ColumnNetworkActivity = components.ColumnImpl[process.Process]{
 	ColName: "Network Activity",
-	DataFn: func(pd data.Process) string {
+	DataFn: func(pd process.Process) string {
 		return fmt.Sprintf("%0.1f Mbps / %0.1f Mbps", pd.FDBData.Network.MegabitsSent.Hz, pd.FDBData.Network.MegabitsReceived.Hz)
 	},
 	ColorFn: ProcessColour,
 }
 
-var ColumnVersion = components.ColumnImpl[data.Process]{
+var ColumnVersion = components.ColumnImpl[process.Process]{
 	ColName: "Version",
-	DataFn: func(pd data.Process) string {
+	DataFn: func(pd process.Process) string {
 		return pd.FDBData.Version
 	},
 	ColorFn: ProcessColour,
 }
 
-var ColumnUptime = components.ColumnImpl[data.Process]{
+var ColumnUptime = components.ColumnImpl[process.Process]{
 	ColName: "Uptime",
-	DataFn: func(process data.Process) string {
+	DataFn: func(process process.Process) string {
 		return (time.Duration(process.FDBData.Uptime) * time.Second).String()
 	},
 	ColorFn: ProcessColour,
 }
 
-var ColumnKVStorage = components.ColumnImpl[data.Process]{
+var ColumnKVStorage = components.ColumnImpl[process.Process]{
 	ColName: "KV Storage",
-	DataFn: func(pd data.Process) string {
+	DataFn: func(pd process.Process) string {
 		idx := findRole(pd.FDBData.Roles, "storage")
 		return Convert(pd.FDBData.Roles[idx].KVUsedBytes, 1, None)
 	},
 	ColorFn: ProcessColour,
 }
 
-var ColumnLogQueueStorage = components.ColumnImpl[data.Process]{
+var ColumnLogQueueStorage = components.ColumnImpl[process.Process]{
 	ColName: "Queue Storage",
-	DataFn: func(pd data.Process) string {
+	DataFn: func(pd process.Process) string {
 		idx := findRole(pd.FDBData.Roles, "log")
 		return Convert(pd.FDBData.Roles[idx].QueueUsedBytes, 1, None)
 	},
 	ColorFn: ProcessColour,
 }
 
-var ColumnLogQueueLength = components.ColumnImpl[data.Process]{
+var ColumnLogQueueLength = components.ColumnImpl[process.Process]{
 	ColName: "Queue Length",
-	DataFn: func(pd data.Process) string {
+	DataFn: func(pd process.Process) string {
 		idx := findRole(pd.FDBData.Roles, "log")
 		length := pd.FDBData.Roles[idx].InputBytes.Counter - pd.FDBData.Roles[idx].DurableBytes.Counter
 		return Convert(length, 1, None)
@@ -223,36 +223,36 @@ var ColumnLogQueueLength = components.ColumnImpl[data.Process]{
 	ColorFn: ProcessColour,
 }
 
-var ColumnStorageDurabilityRate = components.ColumnImpl[data.Process]{
+var ColumnStorageDurabilityRate = components.ColumnImpl[process.Process]{
 	ColName: "Input / Durable Rate",
-	DataFn: func(pd data.Process) string {
+	DataFn: func(pd process.Process) string {
 		idx := findRole(pd.FDBData.Roles, "storage")
 		return fmt.Sprintf("%s / %s", Convert(pd.FDBData.Roles[idx].InputBytes.Hz, 1, "s"), Convert(pd.FDBData.Roles[idx].DurableBytes.Hz, 1, "s"))
 	},
 	ColorFn: ProcessColour,
 }
 
-var ColumnLogDurabilityRate = components.ColumnImpl[data.Process]{
+var ColumnLogDurabilityRate = components.ColumnImpl[process.Process]{
 	ColName: "Input / Durable Rate",
-	DataFn: func(pd data.Process) string {
+	DataFn: func(pd process.Process) string {
 		idx := findRole(pd.FDBData.Roles, "log")
 		return fmt.Sprintf("%s / %s", Convert(pd.FDBData.Roles[idx].InputBytes.Hz, 1, "s"), Convert(pd.FDBData.Roles[idx].DurableBytes.Hz, 1, "s"))
 	},
 	ColorFn: ProcessColour,
 }
 
-var ColumnStorageLag = components.ColumnImpl[data.Process]{
+var ColumnStorageLag = components.ColumnImpl[process.Process]{
 	ColName: "Data / Durability Lag",
-	DataFn: func(pd data.Process) string {
+	DataFn: func(pd process.Process) string {
 		idx := findRole(pd.FDBData.Roles, "storage")
 		return fmt.Sprintf("%0.1fs / %0.1fs", pd.FDBData.Roles[idx].DataLag.Seconds, pd.FDBData.Roles[idx].DurabilityLag.Seconds)
 	},
 	ColorFn: ProcessColour,
 }
 
-var ColumnStorageTotalQueries = components.ColumnImpl[data.Process]{
+var ColumnStorageTotalQueries = components.ColumnImpl[process.Process]{
 	ColName: "Queries",
-	DataFn: func(pd data.Process) string {
+	DataFn: func(pd process.Process) string {
 		idx := findRole(pd.FDBData.Roles, "storage")
 		return fmt.Sprintf("%0.1f/s", pd.FDBData.Roles[idx].TotalQueries.Hz)
 	},

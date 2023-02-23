@@ -3,7 +3,7 @@ package views
 import (
 	"fmt"
 	"github.com/pwood/fdbexplorer/output/ui/components"
-	"github.com/pwood/fdbexplorer/output/ui/data"
+	"github.com/pwood/fdbexplorer/output/ui/data/process"
 )
 
 type ClusterStats struct {
@@ -18,8 +18,8 @@ type ClusterStats struct {
 	BytesWritten float64
 }
 
-func UpdateClusterStats(f func(ClusterStats)) func(data.Update) {
-	return func(dsu data.Update) {
+func UpdateClusterStats(f func(ClusterStats)) func(process.Update) {
+	return func(dsu process.Update) {
 		f(ClusterStats{
 			TxStarted:    dsu.Root.Cluster.Workload.Transactions.Started.Hz,
 			TxCommitted:  dsu.Root.Cluster.Workload.Transactions.Committed.Hz,

@@ -4,16 +4,22 @@ import (
 	"fmt"
 	"github.com/pwood/fdbexplorer/data/fdb"
 	"github.com/pwood/fdbexplorer/output/ui/components"
-	"github.com/pwood/fdbexplorer/output/ui/data"
+	"github.com/pwood/fdbexplorer/output/ui/data/process"
+	"sort"
+	"strings"
 )
 
-func UpdateBackupInstances(f func(instance []fdb.BackupInstance)) func(data.Update) {
-	return func(dsu data.Update) {
+func UpdateBackupInstances(f func(instance []fdb.BackupInstance)) func(process.Update) {
+	return func(dsu process.Update) {
 		var instances []fdb.BackupInstance
 
 		for _, instance := range dsu.Root.Cluster.Layers.Backup.Instances {
 			instances = append(instances, instance)
 		}
+
+		sort.Slice(instances, func(i, j int) bool {
+			return strings.Compare(instances[i].Id, instances[j].Id) < 0
+		})
 
 		f(instances)
 	}
@@ -61,14 +67,18 @@ var ColumnBackupInstanceRecentOperations = components.ColumnImpl[fdb.BackupInsta
 	},
 }
 
-func UpdateBackupTags(f func(instance []fdb.BackupTag)) func(data.Update) {
-	return func(dsu data.Update) {
+func UpdateBackupTags(f func(instance []fdb.BackupTag)) func(process.Update) {
+	return func(dsu process.Update) {
 		var tags []fdb.BackupTag
 
 		for id, tag := range dsu.Root.Cluster.Layers.Backup.Tags {
 			tag.Id = id
 			tags = append(tags, tag)
 		}
+
+		sort.Slice(tags, func(i, j int) bool {
+			return strings.Compare(tags[i].Id, tags[j].Id) < 0
+		})
 
 		f(tags)
 	}

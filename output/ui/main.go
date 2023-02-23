@@ -7,7 +7,7 @@ import (
 	"github.com/pwood/fdbexplorer/data/fdb"
 	"github.com/pwood/fdbexplorer/input"
 	"github.com/pwood/fdbexplorer/output/ui/components"
-	"github.com/pwood/fdbexplorer/output/ui/data"
+	"github.com/pwood/fdbexplorer/output/ui/data/process"
 	"github.com/pwood/fdbexplorer/output/ui/views"
 	"github.com/rivo/tview"
 	"os"
@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-type UpdatableViews func(dsu data.Update)
+type UpdatableViews func(dsu process.Update)
 
 func New(ds input.StatusProvider) *Main {
 	return &Main{ds: ds, upCh: make(chan struct{})}
@@ -26,7 +26,7 @@ type Main struct {
 	upCh chan struct{}
 	app  *tview.Application
 
-	metadataStore *data.Store
+	metadataStore *process.Store
 	updatable     []UpdatableViews
 	rawJson       []byte
 
@@ -76,7 +76,7 @@ func (m *Main) updateFromDS() {
 		return
 	}
 
-	dsu := data.Update{
+	u := process.Update{
 		Root: root,
 	}
 
@@ -85,14 +85,14 @@ func (m *Main) updateFromDS() {
 			m.updateStatus(fmt.Sprintf("Failed to query excluded processes data source: %s", err.Error()), StatusFailure)
 			return
 		} else {
-			dsu.ExcludedProcesses = excludedProcesses
+			u.ExcludedProcesses = excludedProcesses
 		}
 
 		if exclusionInProgress, err := em.ExclusionInProgressProcesses(); err != nil {
 			m.updateStatus(fmt.Sprintf("Failed to query exclusion in progress data source: %s", err.Error()), StatusFailure)
 			return
 		} else {
-			dsu.ExclusionInProgress = exclusionInProgress
+			u.ExclusionInProgress = exclusionInProgress
 		}
 	}
 
@@ -103,8 +103,8 @@ func (m *Main) updateFromDS() {
 	m.updateStatus(msg, StatusSuccess)
 
 	m.app.QueueUpdateDraw(func() {
-		for _, updateFn := range m.updatable {
-			updateFn(dsu)
+		for _, uFn := range m.updatable {
+			uFn(u)
 		}
 	})
 }
@@ -131,30 +131,32 @@ func (m *Main) snapshotData() (string, error) {
 }
 
 func (m *Main) Run() {
-	sorter := &SortControl{}
 	m.interval = &IntervalControl{}
+
+	sorter := &process.SortControl{}
+	m.metadataStore = process.NewStore(sorter.Sort)
 
 	_, haveEM := m.ds.(input.ExclusionManager)
 
-	localityDataContent := components.NewDataTable[data.Process](
-		[]components.ColumnDef[data.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnStatus, views.ColumnMachine, views.ColumnLocality, views.ColumnClass, views.ColumnRoles, views.ColumnVersion, views.ColumnUptime},
-		views.All,
-		sorter.Sort)
+	localityDataContent := components.NewDataTable[process.Process](
+		[]components.ColumnDef[process.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnStatus, views.ColumnMachine, views.ColumnLocality, views.ColumnClass, views.ColumnRoles, views.ColumnVersion, views.ColumnUptime})
 
-	usageDataContent := components.NewDataTable[data.Process](
-		[]components.ColumnDef[data.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnRoles, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnNetworkActivity, views.ColumnDiskUsage, views.ColumnDiskActivity},
-		views.All,
-		sorter.Sort)
+	m.metadataStore.AddNotifiable(localityDataContent.Update, views.All)
 
-	storageDataContent := components.NewDataTable[data.Process](
-		[]components.ColumnDef[data.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnDiskUsage, views.ColumnDiskActivity, views.ColumnKVStorage, views.ColumnStorageDurabilityRate, views.ColumnStorageLag, views.ColumnStorageTotalQueries},
-		views.RoleMatch("storage"),
-		sorter.Sort)
+	usageDataContent := components.NewDataTable[process.Process](
+		[]components.ColumnDef[process.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnRoles, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnNetworkActivity, views.ColumnDiskUsage, views.ColumnDiskActivity})
 
-	logDataContent := components.NewDataTable[data.Process](
-		[]components.ColumnDef[data.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnDiskUsage, views.ColumnDiskActivity, views.ColumnLogQueueLength, views.ColumnLogDurabilityRate, views.ColumnLogQueueStorage},
-		views.RoleMatch("log"),
-		sorter.Sort)
+	m.metadataStore.AddNotifiable(usageDataContent.Update, views.All)
+
+	storageDataContent := components.NewDataTable[process.Process](
+		[]components.ColumnDef[process.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnDiskUsage, views.ColumnDiskActivity, views.ColumnKVStorage, views.ColumnStorageDurabilityRate, views.ColumnStorageLag, views.ColumnStorageTotalQueries})
+
+	m.metadataStore.AddNotifiable(storageDataContent.Update, views.RoleMatch("storage"))
+
+	logDataContent := components.NewDataTable[process.Process](
+		[]components.ColumnDef[process.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnDiskUsage, views.ColumnDiskActivity, views.ColumnLogQueueLength, views.ColumnLogDurabilityRate, views.ColumnLogQueueStorage})
+
+	m.metadataStore.AddNotifiable(logDataContent.Update, views.RoleMatch("log"))
 
 	clusterHealthContent := components.NewStatsGrid([][]components.ColumnDef[views.ClusterHealth]{
 		{views.StatClusterHealth, views.StatRebalanceQueued},
@@ -171,36 +173,20 @@ func (m *Main) Run() {
 	})
 
 	backupInstancesContent := components.NewDataTable[fdb.BackupInstance](
-		[]components.ColumnDef[fdb.BackupInstance]{views.ColumnBackupInstanceId, views.ColumnBackupInstanceVersion, views.ColumnBackupInstanceConfiguredWorkers, views.ColumnBackupInstanceUsedMemory, views.ColumnBackupInstanceRecentTransfer, views.ColumnBackupInstanceRecentOperations},
-		func(_ fdb.BackupInstance) bool { return true },
-		func(i fdb.BackupInstance, j fdb.BackupInstance) bool { return strings.Compare(i.Id, j.Id) < 0 })
+		[]components.ColumnDef[fdb.BackupInstance]{views.ColumnBackupInstanceId, views.ColumnBackupInstanceVersion, views.ColumnBackupInstanceConfiguredWorkers, views.ColumnBackupInstanceUsedMemory, views.ColumnBackupInstanceRecentTransfer, views.ColumnBackupInstanceRecentOperations})
 
 	backupTagsContent := components.NewDataTable[fdb.BackupTag](
-		[]components.ColumnDef[fdb.BackupTag]{views.ColumnBackupTagId, views.ColumnBackupStatus, views.ColumnBackupRunning, views.ColumnBackupRestorable, views.ColumnBackupSecondsBehind, views.ColumnBackupRestorableVersion, views.ColumnBackupRangeBytes, views.ColumnBackupLogBytes},
-		func(_ fdb.BackupTag) bool { return true },
-		func(i fdb.BackupTag, j fdb.BackupTag) bool { return strings.Compare(i.Id, j.Id) < 0 })
-
-	m.metadataStore = &data.Store{Metadata: map[string]*data.Metadata{}}
+		[]components.ColumnDef[fdb.BackupTag]{views.ColumnBackupTagId, views.ColumnBackupStatus, views.ColumnBackupRunning, views.ColumnBackupRestorable, views.ColumnBackupSecondsBehind, views.ColumnBackupRestorableVersion, views.ColumnBackupRangeBytes, views.ColumnBackupLogBytes})
 
 	m.updatable = []UpdatableViews{
-		m.metadataStore.Update(localityDataContent.Update),
-		m.metadataStore.Update(usageDataContent.Update),
-		m.metadataStore.Update(storageDataContent.Update),
-		m.metadataStore.Update(logDataContent.Update),
+		m.metadataStore.Update,
 		views.UpdateClusterHealth(clusterHealthContent.Update),
 		views.UpdateClusterStats(clusterStatsContent.Update),
 		views.UpdateBackupInstances(backupInstancesContent.Update),
 		views.UpdateBackupTags(backupTagsContent.Update),
 	}
 
-	sortAll := func() {
-		localityDataContent.Sort()
-		usageDataContent.Sort()
-		storageDataContent.Sort()
-		logDataContent.Sort()
-	}
-
-	processDataInput := func(table *tview.Table, content *components.DataTable[data.Process]) func(event *tcell.EventKey) *tcell.EventKey {
+	processDataInput := func(table *tview.Table, content *components.DataTable[process.Process]) func(event *tcell.EventKey) *tcell.EventKey {
 		return func(event *tcell.EventKey) *tcell.EventKey {
 			switch event.Key() {
 			case tcell.KeyRune:
@@ -208,7 +194,7 @@ func (m *Main) Run() {
 				case ' ':
 					row, _ := table.GetSelection()
 					content.Get(row).Metadata.ToggleSelected()
-					sortAll()
+					m.metadataStore.Sort()
 					return nil
 				}
 			}
@@ -276,7 +262,7 @@ func (m *Main) Run() {
 			slideShow.Next()
 		case tcell.KeyF1:
 			sorter.Next()
-			sortAll()
+			m.metadataStore.Sort()
 		case tcell.KeyF2:
 			if filename, err := m.snapshotData(); err != nil {
 				m.updateStatus(fmt.Sprintf("Failed to write snapshot: %s", err.Error()), StatusFailure)
@@ -303,7 +289,7 @@ func (m *Main) Run() {
 			switch event.Rune() {
 			case '\\':
 				m.metadataStore.ClearSelected()
-				sortAll()
+				m.metadataStore.Sort()
 			default:
 				return event
 			}

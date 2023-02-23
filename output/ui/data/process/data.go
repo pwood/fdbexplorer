@@ -1,4 +1,4 @@
-package data
+package process
 
 import "github.com/pwood/fdbexplorer/data/fdb"
 

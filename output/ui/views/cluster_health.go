@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/gdamore/tcell/v2"
 	"github.com/pwood/fdbexplorer/output/ui/components"
-	"github.com/pwood/fdbexplorer/output/ui/data"
+	"github.com/pwood/fdbexplorer/output/ui/data/process"
 )
 
 type ClusterHealth struct {
@@ -19,8 +19,8 @@ type ClusterHealth struct {
 	RecoveryDescription string
 }
 
-func UpdateClusterHealth(f func(ClusterHealth)) func(data.Update) {
-	return func(dsu data.Update) {
+func UpdateClusterHealth(f func(ClusterHealth)) func(process.Update) {
+	return func(dsu process.Update) {
 		f(ClusterHealth{
 			Healthy:             dsu.Root.Cluster.Data.State.Health,
 			Health:              Titlify(dsu.Root.Cluster.Data.State.Name),

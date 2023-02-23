@@ -3,7 +3,6 @@ package components
 import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
-	"sort"
 	"sync"
 )
 
@@ -34,11 +33,8 @@ func (c ColumnImpl[D]) Color(d D) tcell.Color {
 	return c.ColorFn(d)
 }
 
-func NewDataTable[D any](columns []ColumnDef[D], filterFn func(D) bool, sortFn func(D, D) bool) *DataTable[D] {
+func NewDataTable[D any](columns []ColumnDef[D]) *DataTable[D] {
 	return &DataTable[D]{
-		filterFn: filterFn,
-		sortFn:   sortFn,
-
 		columns: columns,
 
 		m: &sync.RWMutex{},
@@ -48,9 +44,6 @@ func NewDataTable[D any](columns []ColumnDef[D], filterFn func(D) bool, sortFn f
 type DataTable[D any] struct {
 	tview.TableContentReadOnly
 
-	filterFn func(D) bool
-	sortFn   func(D, D) bool
-
 	columns []ColumnDef[D]
 
 	m    *sync.RWMutex
@@ -58,28 +51,9 @@ type DataTable[D any] struct {
 }
 
 func (dt *DataTable[D]) Update(d []D) {
-	var newData []D
-
-	for _, di := range d {
-		if dt.filterFn == nil || dt.filterFn(di) {
-			newData = append(newData, di)
-		}
-	}
-
 	dt.m.Lock()
-	dt.data = newData
+	dt.data = d
 	dt.m.Unlock()
-
-	dt.Sort()
-}
-
-func (dt *DataTable[D]) Sort() {
-	dt.m.Lock()
-	defer dt.m.Unlock()
-
-	sort.Slice(dt.data, func(i, j int) bool {
-		return dt.sortFn(dt.data[i], dt.data[j])
-	})
 }
 
 func (dt *DataTable[D]) Get(row int) *D {

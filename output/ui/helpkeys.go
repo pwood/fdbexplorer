@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"github.com/pwood/fdbexplorer/output/ui/data/process"
 	"github.com/rivo/tview"
 )
 
@@ -10,7 +11,7 @@ var helpKeyText = []string{"Sort", "Snapshot", "Interval", "-", "Refresh", "-", 
 type HelpKeys struct {
 	tview.TableContentReadOnly
 
-	sorter   *SortControl
+	sorter   *process.SortControl
 	interval *IntervalControl
 	haveEM   bool
 }
