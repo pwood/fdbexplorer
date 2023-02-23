@@ -26,9 +26,9 @@ type Main struct {
 	upCh chan struct{}
 	app  *tview.Application
 
-	metadataStore *process.Store
-	updatable     []UpdatableViews
-	rawJson       []byte
+	processStore *process.Store
+	updatable    []UpdatableViews
+	rawJson      []byte
 
 	statusText *tview.TextView
 	interval   *IntervalControl
@@ -134,29 +134,29 @@ func (m *Main) Run() {
 	m.interval = &IntervalControl{}
 
 	sorter := &process.SortControl{}
-	m.metadataStore = process.NewStore(sorter.Sort)
+	m.processStore = process.NewStore(sorter.Sort)
 
-	_, haveEM := m.ds.(input.ExclusionManager)
+	em, haveEM := m.ds.(input.ExclusionManager)
 
 	localityDataContent := components.NewDataTable[process.Process](
 		[]components.ColumnDef[process.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnStatus, views.ColumnMachine, views.ColumnLocality, views.ColumnClass, views.ColumnRoles, views.ColumnVersion, views.ColumnUptime})
 
-	m.metadataStore.AddNotifiable(localityDataContent.Update, views.All)
+	m.processStore.AddNotifiable(localityDataContent.Update, views.All)
 
 	usageDataContent := components.NewDataTable[process.Process](
 		[]components.ColumnDef[process.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnRoles, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnNetworkActivity, views.ColumnDiskUsage, views.ColumnDiskActivity})
 
-	m.metadataStore.AddNotifiable(usageDataContent.Update, views.All)
+	m.processStore.AddNotifiable(usageDataContent.Update, views.All)
 
 	storageDataContent := components.NewDataTable[process.Process](
 		[]components.ColumnDef[process.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnDiskUsage, views.ColumnDiskActivity, views.ColumnKVStorage, views.ColumnStorageDurabilityRate, views.ColumnStorageLag, views.ColumnStorageTotalQueries})
 
-	m.metadataStore.AddNotifiable(storageDataContent.Update, views.RoleMatch("storage"))
+	m.processStore.AddNotifiable(storageDataContent.Update, views.RoleMatch("storage"))
 
 	logDataContent := components.NewDataTable[process.Process](
 		[]components.ColumnDef[process.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnDiskUsage, views.ColumnDiskActivity, views.ColumnLogQueueLength, views.ColumnLogDurabilityRate, views.ColumnLogQueueStorage})
 
-	m.metadataStore.AddNotifiable(logDataContent.Update, views.RoleMatch("log"))
+	m.processStore.AddNotifiable(logDataContent.Update, views.RoleMatch("log"))
 
 	clusterHealthContent := components.NewStatsGrid([][]components.ColumnDef[views.ClusterHealth]{
 		{views.StatClusterHealth, views.StatRebalanceQueued},
@@ -179,7 +179,7 @@ func (m *Main) Run() {
 		[]components.ColumnDef[fdb.BackupTag]{views.ColumnBackupTagId, views.ColumnBackupStatus, views.ColumnBackupRunning, views.ColumnBackupRestorable, views.ColumnBackupSecondsBehind, views.ColumnBackupRestorableVersion, views.ColumnBackupRangeBytes, views.ColumnBackupLogBytes})
 
 	m.updatable = []UpdatableViews{
-		m.metadataStore.Update,
+		m.processStore.Update,
 		views.UpdateClusterHealth(clusterHealthContent.Update),
 		views.UpdateClusterStats(clusterStatsContent.Update),
 		views.UpdateBackupInstances(backupInstancesContent.Update),
@@ -194,7 +194,7 @@ func (m *Main) Run() {
 				case ' ':
 					row, _ := table.GetSelection()
 					content.Get(row).Metadata.ToggleSelected()
-					m.metadataStore.Sort()
+					m.processStore.Sort()
 					return nil
 				}
 			}
@@ -262,7 +262,7 @@ func (m *Main) Run() {
 			slideShow.Next()
 		case tcell.KeyF1:
 			sorter.Next()
-			m.metadataStore.Sort()
+			m.processStore.Sort()
 		case tcell.KeyF2:
 			if filename, err := m.snapshotData(); err != nil {
 				m.updateStatus(fmt.Sprintf("Failed to write snapshot: %s", err.Error()), StatusFailure)
@@ -275,11 +275,15 @@ func (m *Main) Run() {
 			m.upCh <- struct{}{}
 		case tcell.KeyF7:
 			if haveEM {
-
+				if err := manageProcesses(em, m.processStore, true); err != nil {
+					m.updateStatus(fmt.Sprintf("Failed to include processes: %s", err.Error()), StatusFailure)
+				}
 			}
 		case tcell.KeyF8:
 			if haveEM {
-
+				if err := manageProcesses(em, m.processStore, false); err != nil {
+					m.updateStatus(fmt.Sprintf("Failed to exclude processes: %s", err.Error()), StatusFailure)
+				}
 			}
 		case tcell.KeyESC:
 			m.app.Stop()
@@ -288,8 +292,8 @@ func (m *Main) Run() {
 		case tcell.KeyRune:
 			switch event.Rune() {
 			case '\\':
-				m.metadataStore.ClearSelected()
-				m.metadataStore.Sort()
+				m.processStore.ClearSelected()
+				m.processStore.Sort()
 			default:
 				return event
 			}

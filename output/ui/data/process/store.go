@@ -95,6 +95,18 @@ func (m *Store) ClearSelected() {
 	}
 }
 
+func (m *Store) FilterFetch(fn func(process Process) bool) []Process {
+	var processes []Process
+
+	for _, p := range m.store {
+		if fn(*p) {
+			processes = append(processes, *p)
+		}
+	}
+
+	return processes
+}
+
 func (m *Store) findOrCreate(id string) (*Process, bool) {
 	pd, ok := m.store[id]
 

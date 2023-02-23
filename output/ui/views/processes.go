@@ -14,6 +14,10 @@ func All(_ process.Process) bool {
 	return true
 }
 
+func Selected(p process.Process) bool {
+	return p.Metadata.Selected
+}
+
 func RoleMatch(s string) func(process.Process) bool {
 	return func(process process.Process) bool {
 		for _, r := range process.FDBData.Roles {

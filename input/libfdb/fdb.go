@@ -48,7 +48,7 @@ func (f *FDB) Status() (json.RawMessage, error) {
 
 func (f *FDB) ExcludeProcess(excludeKey string) error {
 	if _, err := f.db.Transact(func(tr fdb.Transaction) (interface{}, error) {
-		if err := tr.Options().SetAccessSystemKeys(); err != nil {
+		if err := tr.Options().SetSpecialKeySpaceEnableWrites(); err != nil {
 			return nil, err
 		}
 
@@ -64,7 +64,7 @@ func (f *FDB) ExcludeProcess(excludeKey string) error {
 
 func (f *FDB) IncludeProcess(includeKey string) error {
 	if _, err := f.db.Transact(func(tr fdb.Transaction) (interface{}, error) {
-		if err := tr.Options().SetAccessSystemKeys(); err != nil {
+		if err := tr.Options().SetSpecialKeySpaceEnableWrites(); err != nil {
 			return nil, err
 		}
 
