@@ -18,20 +18,30 @@ import (
 type UpdatableViews func(dsu process.Update)
 
 func New(ds input.StatusProvider) *Main {
-	return &Main{ds: ds, upCh: make(chan struct{})}
+	main := &Main{ds: ds, upCh: make(chan struct{})}
+
+	if em, ok := ds.(input.ExclusionManager); ok {
+		main.em = em
+	}
+
+	return main
 }
 
 type Main struct {
 	ds   input.StatusProvider
+	em   input.ExclusionManager
 	upCh chan struct{}
 	app  *tview.Application
+
+	slideShow *components.SlideShow
+	sorter    *process.SortControl
 
 	processStore *process.Store
 	updatable    []UpdatableViews
 	rawJson      []byte
 
 	statusText *tview.TextView
-	interval   *IntervalControl
+	interval   *views.IntervalControl
 }
 
 const (
@@ -131,12 +141,10 @@ func (m *Main) snapshotData() (string, error) {
 }
 
 func (m *Main) Run() {
-	m.interval = &IntervalControl{}
+	m.interval = &views.IntervalControl{}
 
-	sorter := &process.SortControl{}
-	m.processStore = process.NewStore(sorter.Sort)
-
-	em, haveEM := m.ds.(input.ExclusionManager)
+	m.sorter = &process.SortControl{}
+	m.processStore = process.NewStore(m.sorter.Sort)
 
 	localityDataContent := components.NewDataTable[process.Process](
 		[]components.ColumnDef[process.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnStatus, views.ColumnMachine, views.ColumnLocality, views.ColumnClass, views.ColumnRoles, views.ColumnVersion, views.ColumnUptime})
@@ -220,12 +228,12 @@ func (m *Main) Run() {
 	backupFlex.AddItem(backupInstances, 0, 1, false)
 	backupFlex.AddItem(backupTags, 0, 1, false)
 
-	slideShow := components.NewSlideShow()
-	slideShow.Add("Locality", locality)
-	slideShow.Add("Usage Overview", usage)
-	slideShow.Add("Storage Processes", storage)
-	slideShow.Add("Log Processes", logs)
-	slideShow.Add("Backups", backupFlex)
+	m.slideShow = components.NewSlideShow()
+	m.slideShow.Add("Locality", locality)
+	m.slideShow.Add("Usage Overview", usage)
+	m.slideShow.Add("Storage Processes", storage)
+	m.slideShow.Add("Log Processes", logs)
+	m.slideShow.Add("Backups", backupFlex)
 
 	m.statusText = tview.NewTextView()
 	m.statusText.SetTextAlign(tview.AlignRight)
@@ -233,7 +241,7 @@ func (m *Main) Run() {
 
 	bottom := tview.NewFlex()
 	bottom.SetBorderPadding(0, 0, 1, 1)
-	bottom.AddItem(tview.NewTable().SetContent(&HelpKeys{sorter: sorter, interval: m.interval, haveEM: haveEM}).SetSelectable(false, false), 0, 1, false)
+	bottom.AddItem(tview.NewTable().SetContent(&views.HelpKeys{Sorter: m.sorter, Interval: m.interval, HasEM: m.em != nil}).SetSelectable(false, false), 0, 1, false)
 	bottom.AddItem(m.statusText, 0, 1, false)
 
 	clusterHealthFlex := tview.NewFlex()
@@ -251,57 +259,10 @@ func (m *Main) Run() {
 	grid := tview.NewGrid().SetRows(5, 0, 1).SetColumns(0, 0, 0).SetBorders(true)
 	grid.AddItem(clusterHealthFlex, 0, 0, 1, 2, 0, 0, false)
 	grid.AddItem(clusterWorkloadFlex, 0, 2, 1, 1, 0, 0, false)
-	grid.AddItem(slideShow, 1, 0, 1, 3, 0, 0, true)
+	grid.AddItem(m.slideShow, 1, 0, 1, 3, 0, 0, true)
 	grid.AddItem(bottom, 2, 0, 1, 3, 0, 0, false)
 
-	grid.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Key() {
-		case tcell.KeyLeft:
-			slideShow.Prev()
-		case tcell.KeyRight:
-			slideShow.Next()
-		case tcell.KeyF1:
-			sorter.Next()
-			m.processStore.Sort()
-		case tcell.KeyF2:
-			if filename, err := m.snapshotData(); err != nil {
-				m.updateStatus(fmt.Sprintf("Failed to write snapshot: %s", err.Error()), StatusFailure)
-			} else {
-				m.updateStatus(fmt.Sprintf("Snapshot written: %s", filename), StatusSuccess)
-			}
-		case tcell.KeyF3:
-			m.interval.Next()
-		case tcell.KeyF5:
-			m.upCh <- struct{}{}
-		case tcell.KeyF7:
-			if haveEM {
-				if err := manageProcesses(em, m.processStore, true); err != nil {
-					m.updateStatus(fmt.Sprintf("Failed to include processes: %s", err.Error()), StatusFailure)
-				}
-			}
-		case tcell.KeyF8:
-			if haveEM {
-				if err := manageProcesses(em, m.processStore, false); err != nil {
-					m.updateStatus(fmt.Sprintf("Failed to exclude processes: %s", err.Error()), StatusFailure)
-				}
-			}
-		case tcell.KeyESC:
-			m.app.Stop()
-		case tcell.KeyCtrlL:
-			go m.app.Draw()
-		case tcell.KeyRune:
-			switch event.Rune() {
-			case '\\':
-				m.processStore.ClearSelected()
-				m.processStore.Sort()
-			default:
-				return event
-			}
-		default:
-			return event
-		}
-		return nil
-	})
+	grid.SetInputCapture(m.rootAction)
 
 	m.app = tview.NewApplication().SetRoot(grid, true).SetFocus(locality)
 

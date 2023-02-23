@@ -1,4 +1,4 @@
-package ui
+package views
 
 import (
 	"fmt"
@@ -11,9 +11,9 @@ var helpKeyText = []string{"Sort", "Snapshot", "Interval", "-", "Refresh", "-", 
 type HelpKeys struct {
 	tview.TableContentReadOnly
 
-	sorter   *process.SortControl
-	interval *IntervalControl
-	haveEM   bool
+	Sorter   *process.SortControl
+	Interval *IntervalControl
+	HasEM    bool
 }
 
 func (h *HelpKeys) GetCell(_, column int) *tview.TableCell {
@@ -21,11 +21,11 @@ func (h *HelpKeys) GetCell(_, column int) *tview.TableCell {
 
 	switch column {
 	case 0:
-		text = fmt.Sprintf("%s (%s)", helpKeyText[column], h.sorter.SortName())
+		text = fmt.Sprintf("%s (%s)", helpKeyText[column], h.Sorter.SortName())
 	case 2:
-		text = fmt.Sprintf("%s (%s)", helpKeyText[column], h.interval.Duration().String())
+		text = fmt.Sprintf("%s (%s)", helpKeyText[column], h.Interval.Duration().String())
 	case 6, 7:
-		if h.haveEM {
+		if h.HasEM {
 			text = helpKeyText[column]
 		} else {
 			text = "-"
