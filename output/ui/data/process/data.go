@@ -9,7 +9,7 @@ type Update struct {
 }
 
 type Process struct {
-	FDBData  fdb.Process
+	FDBData  *fdb.Process
 	Metadata *Metadata
 }
 

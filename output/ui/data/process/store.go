@@ -13,13 +13,15 @@ type Store struct {
 	notifiables []notifiable
 	sortFn      func(i Process, j Process) bool
 
-	store map[string]*Metadata
-	data  []Process
+	store        map[string]*Process
+	storeTouched map[string]struct{}
+
+	data []*Process
 }
 
 func NewStore(sortFn func(Process, Process) bool) *Store {
 	return &Store{
-		store:  make(map[string]*Metadata),
+		store:  make(map[string]*Process),
 		sortFn: sortFn,
 	}
 }
@@ -31,36 +33,37 @@ func (m *Store) AddNotifiable(updateFn func([]Process), filterFn func(Process) b
 }
 
 func (m *Store) Update(u Update) {
-	var processes []Process
+	m.storeTouched = make(map[string]struct{})
 
 	for _, proc := range u.Root.Cluster.Processes {
-		meta := m.findOrCreate(proc.Address)
-		meta.Update(proc)
-		meta.ExclusionInProgress = false
-		processes = append(processes, Process{FDBData: proc, Metadata: meta})
+		p, _ := m.findOrCreate(proc.Address)
+		p.FDBData = &proc
+		p.Metadata.Update(proc)
+		p.Metadata.ExclusionInProgress = false
 	}
 
 	for _, excluding := range u.ExclusionInProgress {
-		meta := m.findOrCreate(excluding)
-		meta.ExclusionInProgress = true
+		p, _ := m.findOrCreate(excluding)
+		p.Metadata.ExclusionInProgress = true
 	}
 
 	for _, excluded := range u.ExcludedProcesses {
-		found := false
+		p, created := m.findOrCreate(excluded)
 
-		for _, p := range processes {
-			if p.FDBData.Address == excluded {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			processes = append(processes, Process{FDBData: fdb.Process{Address: excluded, Excluded: true}, Metadata: &Metadata{Health: HealthExcludedOnly}})
+		if created {
+			p.FDBData.Excluded = true
+			p.Metadata.Health = HealthExcludedOnly
 		}
 	}
 
-	m.data = processes
+	var nd []*Process
+
+	for addr := range m.storeTouched {
+		nd = append(nd, m.store[addr])
+	}
+
+	m.data = nd
+
 	m.notify()
 }
 
@@ -70,15 +73,15 @@ func (m *Store) Sort() {
 
 func (m *Store) notify() {
 	sort.Slice(m.data, func(i, j int) bool {
-		return m.sortFn(m.data[i], m.data[j])
+		return m.sortFn(*m.data[i], *m.data[j])
 	})
 
 	for _, n := range m.notifiables {
 		var processes []Process
 
 		for _, p := range m.data {
-			if n.filterFn(p) {
-				processes = append(processes, p)
+			if n.filterFn(*p) {
+				processes = append(processes, *p)
 			}
 		}
 
@@ -88,17 +91,22 @@ func (m *Store) notify() {
 
 func (m *Store) ClearSelected() {
 	for _, pm := range m.store {
-		pm.Selected = false
+		pm.Metadata.Selected = false
 	}
 }
 
-func (m *Store) findOrCreate(id string) *Metadata {
+func (m *Store) findOrCreate(id string) (*Process, bool) {
 	pd, ok := m.store[id]
 
 	if !ok {
-		pd = &Metadata{}
+		pd = &Process{
+			FDBData:  &fdb.Process{Address: id},
+			Metadata: &Metadata{},
+		}
 		m.store[id] = pd
 	}
 
-	return pd
+	m.storeTouched[id] = struct{}{}
+
+	return pd, !ok
 }
