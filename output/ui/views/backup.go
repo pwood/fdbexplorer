@@ -1,16 +1,17 @@
-package ui
+package views
 
 import (
 	"fmt"
 	"github.com/pwood/fdbexplorer/data/fdb"
 	"github.com/pwood/fdbexplorer/output/ui/components"
+	"github.com/pwood/fdbexplorer/output/ui/data"
 )
 
-func UpdateBackupInstances(f func(instance []fdb.BackupInstance)) func(DataSourceUpdate) {
-	return func(dsu DataSourceUpdate) {
+func UpdateBackupInstances(f func(instance []fdb.BackupInstance)) func(data.DataSourceUpdate) {
+	return func(dsu data.DataSourceUpdate) {
 		var instances []fdb.BackupInstance
 
-		for _, instance := range dsu.root.Cluster.Layers.Backup.Instances {
+		for _, instance := range dsu.Root.Cluster.Layers.Backup.Instances {
 			instances = append(instances, instance)
 		}
 
@@ -42,14 +43,14 @@ var ColumnBackupInstanceConfiguredWorkers = components.ColumnImpl[fdb.BackupInst
 var ColumnBackupInstanceUsedMemory = components.ColumnImpl[fdb.BackupInstance]{
 	ColName: "RAM Usage",
 	DataFn: func(instance fdb.BackupInstance) string {
-		return convert(instance.RSSBytes, 1, None)
+		return Convert(instance.RSSBytes, 1, None)
 	},
 }
 
 var ColumnBackupInstanceRecentTransfer = components.ColumnImpl[fdb.BackupInstance]{
 	ColName: "Recent Transfer",
 	DataFn: func(instance fdb.BackupInstance) string {
-		return fmt.Sprintf("%s / %s", convert(instance.BlobStats.Recent.BytesPerSecond, 1, "s"), convert(instance.BlobStats.Recent.BytesSent, 1, None))
+		return fmt.Sprintf("%s / %s", Convert(instance.BlobStats.Recent.BytesPerSecond, 1, "s"), Convert(instance.BlobStats.Recent.BytesSent, 1, None))
 	},
 }
 
@@ -60,11 +61,11 @@ var ColumnBackupInstanceRecentOperations = components.ColumnImpl[fdb.BackupInsta
 	},
 }
 
-func UpdateBackupTags(f func(instance []fdb.BackupTag)) func(DataSourceUpdate) {
-	return func(dsu DataSourceUpdate) {
+func UpdateBackupTags(f func(instance []fdb.BackupTag)) func(data.DataSourceUpdate) {
+	return func(dsu data.DataSourceUpdate) {
 		var tags []fdb.BackupTag
 
-		for id, tag := range dsu.root.Cluster.Layers.Backup.Tags {
+		for id, tag := range dsu.Root.Cluster.Layers.Backup.Tags {
 			tag.Id = id
 			tags = append(tags, tag)
 		}
@@ -83,21 +84,21 @@ var ColumnBackupTagId = components.ColumnImpl[fdb.BackupTag]{
 var ColumnBackupStatus = components.ColumnImpl[fdb.BackupTag]{
 	ColName: "Status",
 	DataFn: func(tag fdb.BackupTag) string {
-		return titlify(tag.CurrentStatus)
+		return Titlify(tag.CurrentStatus)
 	},
 }
 
 var ColumnBackupRunning = components.ColumnImpl[fdb.BackupTag]{
 	ColName: "Running?",
 	DataFn: func(tag fdb.BackupTag) string {
-		return boolify(tag.RunningBackup)
+		return Boolify(tag.RunningBackup)
 	},
 }
 
 var ColumnBackupRestorable = components.ColumnImpl[fdb.BackupTag]{
 	ColName: "Restorable?",
 	DataFn: func(tag fdb.BackupTag) string {
-		return boolify(tag.RunningBackupIsRestorable)
+		return Boolify(tag.RunningBackupIsRestorable)
 	},
 }
 
@@ -118,13 +119,13 @@ var ColumnBackupRestorableVersion = components.ColumnImpl[fdb.BackupTag]{
 var ColumnBackupRangeBytes = components.ColumnImpl[fdb.BackupTag]{
 	ColName: "Range Bytes",
 	DataFn: func(tag fdb.BackupTag) string {
-		return convert(float64(tag.RangeBytesWritten), 1, None)
+		return Convert(float64(tag.RangeBytesWritten), 1, None)
 	},
 }
 
 var ColumnBackupLogBytes = components.ColumnImpl[fdb.BackupTag]{
 	ColName: "Log Bytes",
 	DataFn: func(tag fdb.BackupTag) string {
-		return convert(float64(tag.MutationLogBytesWritten), 1, None)
+		return Convert(float64(tag.MutationLogBytesWritten), 1, None)
 	},
 }

@@ -1,4 +1,4 @@
-package ui
+package views
 
 import (
 	"fmt"
@@ -48,68 +48,6 @@ func (p *ProcessMetadata) Update(proc fdb.Process) {
 	if proc.Degraded {
 		p.Health = HealthCritical
 	}
-}
-
-type DataSourceUpdate struct {
-	root                fdb.Root
-	excludedProcesses   []string
-	exclusionInProgress []string
-}
-
-type metadataStore struct {
-	metadata map[string]*ProcessMetadata
-}
-
-func (m *metadataStore) Update(f func([]ProcessData)) func(DataSourceUpdate) {
-	return func(dsu DataSourceUpdate) {
-		var processes []ProcessData
-
-		for _, proc := range dsu.root.Cluster.Processes {
-			meta := m.findOrCreateMetadata(proc.Address)
-			meta.Update(proc)
-			meta.ExclusionInProgress = false
-			processes = append(processes, ProcessData{Process: proc, Metadata: meta})
-		}
-
-		for _, excluding := range dsu.exclusionInProgress {
-			meta := m.findOrCreateMetadata(excluding)
-			meta.ExclusionInProgress = true
-		}
-
-		for _, excluded := range dsu.excludedProcesses {
-			found := false
-
-			for _, p := range processes {
-				if p.Process.Address == excluded {
-					found = true
-					break
-				}
-			}
-
-			if !found {
-				processes = append(processes, ProcessData{Process: fdb.Process{Address: excluded, Excluded: true}, Metadata: &ProcessMetadata{Health: HealthExcludedOnly}})
-			}
-		}
-
-		f(processes)
-	}
-}
-
-func (m *metadataStore) ClearSelected() {
-	for _, pm := range m.metadata {
-		pm.Selected = false
-	}
-}
-
-func (m *metadataStore) findOrCreateMetadata(id string) *ProcessMetadata {
-	pd, ok := m.metadata[id]
-
-	if !ok {
-		pd = &ProcessMetadata{}
-		m.metadata[id] = pd
-	}
-
-	return pd
 }
 
 func All(_ ProcessData) bool {
@@ -241,7 +179,7 @@ var ColumnRAMUsage = components.ColumnImpl[ProcessData]{
 	ColName: "RAM Usage",
 	DataFn: func(pd ProcessData) string {
 		memUsage := float64(pd.Process.Memory.RSSBytes) / float64(pd.Process.Memory.AvailableBytes)
-		return fmt.Sprintf("%0.1f%% (%s of %s)", memUsage*100, convert(float64(pd.Process.Memory.RSSBytes), 1, None), convert(float64(pd.Process.Memory.AvailableBytes), 1, None))
+		return fmt.Sprintf("%0.1f%% (%s of %s)", memUsage*100, Convert(float64(pd.Process.Memory.RSSBytes), 1, None), Convert(float64(pd.Process.Memory.AvailableBytes), 1, None))
 	},
 	ColorFn: ProcessColour,
 }
@@ -251,7 +189,7 @@ var ColumnDiskUsage = components.ColumnImpl[ProcessData]{
 	DataFn: func(pd ProcessData) string {
 		usedBytes := pd.Process.Disk.TotalBytes - pd.Process.Disk.FreeBytes
 		diskUsage := float64(usedBytes) / float64(pd.Process.Disk.TotalBytes)
-		return fmt.Sprintf("%0.1f%% (%s of %s)", diskUsage*100, convert(float64(usedBytes), 1, None), convert(float64(pd.Process.Disk.TotalBytes), 1, None))
+		return fmt.Sprintf("%0.1f%% (%s of %s)", diskUsage*100, Convert(float64(usedBytes), 1, None), Convert(float64(pd.Process.Disk.TotalBytes), 1, None))
 	},
 	ColorFn: ProcessColour,
 }
@@ -301,7 +239,7 @@ var ColumnKVStorage = components.ColumnImpl[ProcessData]{
 	ColName: "KV Storage",
 	DataFn: func(pd ProcessData) string {
 		idx := findRole(pd.Process.Roles, "storage")
-		return convert(pd.Process.Roles[idx].KVUsedBytes, 1, None)
+		return Convert(pd.Process.Roles[idx].KVUsedBytes, 1, None)
 	},
 	ColorFn: ProcessColour,
 }
@@ -310,7 +248,7 @@ var ColumnLogQueueStorage = components.ColumnImpl[ProcessData]{
 	ColName: "Queue Storage",
 	DataFn: func(pd ProcessData) string {
 		idx := findRole(pd.Process.Roles, "log")
-		return convert(pd.Process.Roles[idx].QueueUsedBytes, 1, None)
+		return Convert(pd.Process.Roles[idx].QueueUsedBytes, 1, None)
 	},
 	ColorFn: ProcessColour,
 }
@@ -320,7 +258,7 @@ var ColumnLogQueueLength = components.ColumnImpl[ProcessData]{
 	DataFn: func(pd ProcessData) string {
 		idx := findRole(pd.Process.Roles, "log")
 		length := pd.Process.Roles[idx].InputBytes.Counter - pd.Process.Roles[idx].DurableBytes.Counter
-		return convert(length, 1, None)
+		return Convert(length, 1, None)
 	},
 	ColorFn: ProcessColour,
 }
@@ -329,7 +267,7 @@ var ColumnStorageDurabilityRate = components.ColumnImpl[ProcessData]{
 	ColName: "Input / Durable Rate",
 	DataFn: func(pd ProcessData) string {
 		idx := findRole(pd.Process.Roles, "storage")
-		return fmt.Sprintf("%s / %s", convert(pd.Process.Roles[idx].InputBytes.Hz, 1, "s"), convert(pd.Process.Roles[idx].DurableBytes.Hz, 1, "s"))
+		return fmt.Sprintf("%s / %s", Convert(pd.Process.Roles[idx].InputBytes.Hz, 1, "s"), Convert(pd.Process.Roles[idx].DurableBytes.Hz, 1, "s"))
 	},
 	ColorFn: ProcessColour,
 }
@@ -338,7 +276,7 @@ var ColumnLogDurabilityRate = components.ColumnImpl[ProcessData]{
 	ColName: "Input / Durable Rate",
 	DataFn: func(pd ProcessData) string {
 		idx := findRole(pd.Process.Roles, "log")
-		return fmt.Sprintf("%s / %s", convert(pd.Process.Roles[idx].InputBytes.Hz, 1, "s"), convert(pd.Process.Roles[idx].DurableBytes.Hz, 1, "s"))
+		return fmt.Sprintf("%s / %s", Convert(pd.Process.Roles[idx].InputBytes.Hz, 1, "s"), Convert(pd.Process.Roles[idx].DurableBytes.Hz, 1, "s"))
 	},
 	ColorFn: ProcessColour,
 }

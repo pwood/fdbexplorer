@@ -7,13 +7,15 @@ import (
 	"github.com/pwood/fdbexplorer/data/fdb"
 	"github.com/pwood/fdbexplorer/input"
 	"github.com/pwood/fdbexplorer/output/ui/components"
+	"github.com/pwood/fdbexplorer/output/ui/data"
+	"github.com/pwood/fdbexplorer/output/ui/views"
 	"github.com/rivo/tview"
 	"os"
 	"strings"
 	"time"
 )
 
-type UpdatableViews func(dsu DataSourceUpdate)
+type UpdatableViews func(dsu data.DataSourceUpdate)
 
 func New(ds input.StatusProvider) *Main {
 	return &Main{ds: ds, upCh: make(chan struct{})}
@@ -24,7 +26,7 @@ type Main struct {
 	upCh chan struct{}
 	app  *tview.Application
 
-	metadataStore *metadataStore
+	metadataStore *data.MetadataStore
 	updatable     []UpdatableViews
 	rawJson       []byte
 
@@ -64,7 +66,7 @@ func (m *Main) updateFromDS() {
 
 	d, err := m.ds.Status()
 	if err != nil {
-		m.updateStatus(fmt.Sprintf("Failed to query root data source: %s", err.Error()), StatusFailure)
+		m.updateStatus(fmt.Sprintf("Failed to query Root data source: %s", err.Error()), StatusFailure)
 		return
 	}
 
@@ -74,8 +76,8 @@ func (m *Main) updateFromDS() {
 		return
 	}
 
-	dsu := DataSourceUpdate{
-		root: root,
+	dsu := data.DataSourceUpdate{
+		Root: root,
 	}
 
 	if em, ok := m.ds.(input.ExclusionManager); ok {
@@ -83,14 +85,14 @@ func (m *Main) updateFromDS() {
 			m.updateStatus(fmt.Sprintf("Failed to query excluded processes data source: %s", err.Error()), StatusFailure)
 			return
 		} else {
-			dsu.excludedProcesses = excludedProcesses
+			dsu.ExcludedProcesses = excludedProcesses
 		}
 
 		if exclusionInProgress, err := em.ExclusionInProgressProcesses(); err != nil {
 			m.updateStatus(fmt.Sprintf("Failed to query exclusion in progress data source: %s", err.Error()), StatusFailure)
 			return
 		} else {
-			dsu.exclusionInProgress = exclusionInProgress
+			dsu.ExclusionInProgress = exclusionInProgress
 		}
 	}
 
@@ -134,61 +136,61 @@ func (m *Main) Run() {
 
 	_, haveEM := m.ds.(input.ExclusionManager)
 
-	localityDataContent := components.NewDataTable[ProcessData](
-		[]components.ColumnDef[ProcessData]{ColumnSelected, ColumnIPAddressPort, ColumnStatus, ColumnMachine, ColumnLocality, ColumnClass, ColumnRoles, ColumnVersion, ColumnUptime},
-		All,
+	localityDataContent := components.NewDataTable[views.ProcessData](
+		[]components.ColumnDef[views.ProcessData]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnStatus, views.ColumnMachine, views.ColumnLocality, views.ColumnClass, views.ColumnRoles, views.ColumnVersion, views.ColumnUptime},
+		views.All,
 		sorter.Sort)
 
-	usageDataContent := components.NewDataTable[ProcessData](
-		[]components.ColumnDef[ProcessData]{ColumnSelected, ColumnIPAddressPort, ColumnRoles, ColumnCPUActivity, ColumnRAMUsage, ColumnNetworkActivity, ColumnDiskUsage, ColumnDiskActivity},
-		All,
+	usageDataContent := components.NewDataTable[views.ProcessData](
+		[]components.ColumnDef[views.ProcessData]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnRoles, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnNetworkActivity, views.ColumnDiskUsage, views.ColumnDiskActivity},
+		views.All,
 		sorter.Sort)
 
-	storageDataContent := components.NewDataTable[ProcessData](
-		[]components.ColumnDef[ProcessData]{ColumnSelected, ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnKVStorage, ColumnStorageDurabilityRate, ColumnStorageLag, ColumnStorageTotalQueries},
-		RoleMatch("storage"),
+	storageDataContent := components.NewDataTable[views.ProcessData](
+		[]components.ColumnDef[views.ProcessData]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnDiskUsage, views.ColumnDiskActivity, views.ColumnKVStorage, views.ColumnStorageDurabilityRate, views.ColumnStorageLag, views.ColumnStorageTotalQueries},
+		views.RoleMatch("storage"),
 		sorter.Sort)
 
-	logDataContent := components.NewDataTable[ProcessData](
-		[]components.ColumnDef[ProcessData]{ColumnSelected, ColumnIPAddressPort, ColumnCPUActivity, ColumnRAMUsage, ColumnDiskUsage, ColumnDiskActivity, ColumnLogQueueLength, ColumnLogDurabilityRate, ColumnLogQueueStorage},
-		RoleMatch("log"),
+	logDataContent := components.NewDataTable[views.ProcessData](
+		[]components.ColumnDef[views.ProcessData]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnDiskUsage, views.ColumnDiskActivity, views.ColumnLogQueueLength, views.ColumnLogDurabilityRate, views.ColumnLogQueueStorage},
+		views.RoleMatch("log"),
 		sorter.Sort)
 
-	clusterHealthContent := components.NewStatsGrid([][]components.ColumnDef[ClusterHealth]{
-		{StatClusterHealth, StatRebalanceQueued},
-		{StatReplicasRemaining, StatRebalanceInflight},
-		{StatRecoveryState, StatEmpty},
-		{StatRecoveryDescription, StatEmpty},
+	clusterHealthContent := components.NewStatsGrid([][]components.ColumnDef[views.ClusterHealth]{
+		{views.StatClusterHealth, views.StatRebalanceQueued},
+		{views.StatReplicasRemaining, views.StatRebalanceInflight},
+		{views.StatRecoveryState, views.StatEmpty},
+		{views.StatRecoveryDescription, views.StatEmpty},
 	})
 
-	clusterStatsContent := components.NewStatsGrid([][]components.ColumnDef[ClusterStats]{
-		{StatTxStarted, StatReads},
-		{StatTxCommitted, StatWrites},
-		{StatTxConflicted, StatBytesRead},
-		{StatTxRejected, StatBytesWritten},
+	clusterStatsContent := components.NewStatsGrid([][]components.ColumnDef[views.ClusterStats]{
+		{views.StatTxStarted, views.StatReads},
+		{views.StatTxCommitted, views.StatWrites},
+		{views.StatTxConflicted, views.StatBytesRead},
+		{views.StatTxRejected, views.StatBytesWritten},
 	})
 
 	backupInstancesContent := components.NewDataTable[fdb.BackupInstance](
-		[]components.ColumnDef[fdb.BackupInstance]{ColumnBackupInstanceId, ColumnBackupInstanceVersion, ColumnBackupInstanceConfiguredWorkers, ColumnBackupInstanceUsedMemory, ColumnBackupInstanceRecentTransfer, ColumnBackupInstanceRecentOperations},
+		[]components.ColumnDef[fdb.BackupInstance]{views.ColumnBackupInstanceId, views.ColumnBackupInstanceVersion, views.ColumnBackupInstanceConfiguredWorkers, views.ColumnBackupInstanceUsedMemory, views.ColumnBackupInstanceRecentTransfer, views.ColumnBackupInstanceRecentOperations},
 		func(_ fdb.BackupInstance) bool { return true },
 		func(i fdb.BackupInstance, j fdb.BackupInstance) bool { return strings.Compare(i.Id, j.Id) < 0 })
 
 	backupTagsContent := components.NewDataTable[fdb.BackupTag](
-		[]components.ColumnDef[fdb.BackupTag]{ColumnBackupTagId, ColumnBackupStatus, ColumnBackupRunning, ColumnBackupRestorable, ColumnBackupSecondsBehind, ColumnBackupRestorableVersion, ColumnBackupRangeBytes, ColumnBackupLogBytes},
+		[]components.ColumnDef[fdb.BackupTag]{views.ColumnBackupTagId, views.ColumnBackupStatus, views.ColumnBackupRunning, views.ColumnBackupRestorable, views.ColumnBackupSecondsBehind, views.ColumnBackupRestorableVersion, views.ColumnBackupRangeBytes, views.ColumnBackupLogBytes},
 		func(_ fdb.BackupTag) bool { return true },
 		func(i fdb.BackupTag, j fdb.BackupTag) bool { return strings.Compare(i.Id, j.Id) < 0 })
 
-	m.metadataStore = &metadataStore{metadata: map[string]*ProcessMetadata{}}
+	m.metadataStore = &data.MetadataStore{Metadata: map[string]*views.ProcessMetadata{}}
 
 	m.updatable = []UpdatableViews{
 		m.metadataStore.Update(localityDataContent.Update),
 		m.metadataStore.Update(usageDataContent.Update),
 		m.metadataStore.Update(storageDataContent.Update),
 		m.metadataStore.Update(logDataContent.Update),
-		UpdateClusterHealth(clusterHealthContent.Update),
-		UpdateClusterStats(clusterStatsContent.Update),
-		UpdateBackupInstances(backupInstancesContent.Update),
-		UpdateBackupTags(backupTagsContent.Update),
+		views.UpdateClusterHealth(clusterHealthContent.Update),
+		views.UpdateClusterStats(clusterStatsContent.Update),
+		views.UpdateBackupInstances(backupInstancesContent.Update),
+		views.UpdateBackupTags(backupTagsContent.Update),
 	}
 
 	sortAll := func() {
@@ -198,7 +200,7 @@ func (m *Main) Run() {
 		logDataContent.Sort()
 	}
 
-	processDataInput := func(table *tview.Table, content *components.DataTable[ProcessData]) func(event *tcell.EventKey) *tcell.EventKey {
+	processDataInput := func(table *tview.Table, content *components.DataTable[views.ProcessData]) func(event *tcell.EventKey) *tcell.EventKey {
 		return func(event *tcell.EventKey) *tcell.EventKey {
 			switch event.Key() {
 			case tcell.KeyRune:

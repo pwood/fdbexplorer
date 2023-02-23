@@ -1,8 +1,9 @@
-package ui
+package views
 
 import (
 	"fmt"
 	"github.com/pwood/fdbexplorer/output/ui/components"
+	"github.com/pwood/fdbexplorer/output/ui/data"
 )
 
 type ClusterStats struct {
@@ -17,17 +18,17 @@ type ClusterStats struct {
 	BytesWritten float64
 }
 
-func UpdateClusterStats(f func(ClusterStats)) func(DataSourceUpdate) {
-	return func(dsu DataSourceUpdate) {
+func UpdateClusterStats(f func(ClusterStats)) func(data.DataSourceUpdate) {
+	return func(dsu data.DataSourceUpdate) {
 		f(ClusterStats{
-			TxStarted:    dsu.root.Cluster.Workload.Transactions.Started.Hz,
-			TxCommitted:  dsu.root.Cluster.Workload.Transactions.Committed.Hz,
-			TxConflicted: dsu.root.Cluster.Workload.Transactions.Conflicted.Hz,
-			TxRejected:   dsu.root.Cluster.Workload.Transactions.RejectedForQueuedTooLong.Hz,
-			Reads:        dsu.root.Cluster.Workload.Operations.Reads.Hz,
-			Writes:       dsu.root.Cluster.Workload.Operations.Writes.Hz,
-			BytesRead:    dsu.root.Cluster.Workload.Bytes.Read.Hz,
-			BytesWritten: dsu.root.Cluster.Workload.Bytes.Written.Hz,
+			TxStarted:    dsu.Root.Cluster.Workload.Transactions.Started.Hz,
+			TxCommitted:  dsu.Root.Cluster.Workload.Transactions.Committed.Hz,
+			TxConflicted: dsu.Root.Cluster.Workload.Transactions.Conflicted.Hz,
+			TxRejected:   dsu.Root.Cluster.Workload.Transactions.RejectedForQueuedTooLong.Hz,
+			Reads:        dsu.Root.Cluster.Workload.Operations.Reads.Hz,
+			Writes:       dsu.Root.Cluster.Workload.Operations.Writes.Hz,
+			BytesRead:    dsu.Root.Cluster.Workload.Bytes.Read.Hz,
+			BytesWritten: dsu.Root.Cluster.Workload.Bytes.Written.Hz,
 		})
 	}
 }
@@ -77,13 +78,13 @@ var StatWrites = components.ColumnImpl[ClusterStats]{
 var StatBytesRead = components.ColumnImpl[ClusterStats]{
 	ColName: "Bytes Read",
 	DataFn: func(cs ClusterStats) string {
-		return convert(cs.BytesRead, 1, "s")
+		return Convert(cs.BytesRead, 1, "s")
 	},
 }
 
 var StatBytesWritten = components.ColumnImpl[ClusterStats]{
 	ColName: "Bytes Written",
 	DataFn: func(cs ClusterStats) string {
-		return convert(cs.BytesWritten, 1, "s")
+		return Convert(cs.BytesWritten, 1, "s")
 	},
 }

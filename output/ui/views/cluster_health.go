@@ -1,9 +1,10 @@
-package ui
+package views
 
 import (
 	"fmt"
 	"github.com/gdamore/tcell/v2"
 	"github.com/pwood/fdbexplorer/output/ui/components"
+	"github.com/pwood/fdbexplorer/output/ui/data"
 )
 
 type ClusterHealth struct {
@@ -18,16 +19,16 @@ type ClusterHealth struct {
 	RecoveryDescription string
 }
 
-func UpdateClusterHealth(f func(ClusterHealth)) func(DataSourceUpdate) {
-	return func(dsu DataSourceUpdate) {
+func UpdateClusterHealth(f func(ClusterHealth)) func(data.DataSourceUpdate) {
+	return func(dsu data.DataSourceUpdate) {
 		f(ClusterHealth{
-			Healthy:             dsu.root.Cluster.Data.State.Health,
-			Health:              titlify(dsu.root.Cluster.Data.State.Name),
-			MinReplicas:         dsu.root.Cluster.Data.State.MinReplicasRemaining,
-			RebalanceQueued:     dsu.root.Cluster.Data.MovingData.InQueueBytes,
-			RebalanceInFlight:   dsu.root.Cluster.Data.MovingData.InFlightBytes,
-			RecoveryState:       titlify(dsu.root.Cluster.RecoveryState.Name),
-			RecoveryDescription: dsu.root.Cluster.RecoveryState.Description,
+			Healthy:             dsu.Root.Cluster.Data.State.Health,
+			Health:              Titlify(dsu.Root.Cluster.Data.State.Name),
+			MinReplicas:         dsu.Root.Cluster.Data.State.MinReplicasRemaining,
+			RebalanceQueued:     dsu.Root.Cluster.Data.MovingData.InQueueBytes,
+			RebalanceInFlight:   dsu.Root.Cluster.Data.MovingData.InFlightBytes,
+			RecoveryState:       Titlify(dsu.Root.Cluster.RecoveryState.Name),
+			RecoveryDescription: dsu.Root.Cluster.RecoveryState.Description,
 		})
 	}
 }
@@ -70,14 +71,14 @@ var StatRecoveryDescription = components.ColumnImpl[ClusterHealth]{
 var StatRebalanceQueued = components.ColumnImpl[ClusterHealth]{
 	ColName: "Rebalance Queued",
 	DataFn: func(h ClusterHealth) string {
-		return convert(float64(h.RebalanceQueued), 1, None)
+		return Convert(float64(h.RebalanceQueued), 1, None)
 	},
 }
 
 var StatRebalanceInflight = components.ColumnImpl[ClusterHealth]{
 	ColName: "Rebalance In-flight",
 	DataFn: func(h ClusterHealth) string {
-		return convert(float64(h.RebalanceInFlight), 1, None)
+		return Convert(float64(h.RebalanceInFlight), 1, None)
 	},
 }
 

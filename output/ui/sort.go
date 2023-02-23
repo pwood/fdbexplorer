@@ -1,6 +1,9 @@
 package ui
 
-import "strings"
+import (
+	"github.com/pwood/fdbexplorer/output/ui/views"
+	"strings"
+)
 
 type SortControl struct {
 	i int
@@ -41,7 +44,7 @@ func (p *SortControl) SortName() string {
 	}
 }
 
-func (p *SortControl) Sort(i ProcessData, j ProcessData) bool {
+func (p *SortControl) Sort(i views.ProcessData, j views.ProcessData) bool {
 	iKey := i.Process.Address
 	jKey := j.Process.Address
 

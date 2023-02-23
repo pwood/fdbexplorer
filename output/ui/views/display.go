@@ -1,4 +1,4 @@
-package ui
+package views
 
 import (
 	"fmt"
@@ -10,11 +10,11 @@ const Mebibyte float64 = Kibibyte * 1024
 const Gibibyte float64 = Mebibyte * 1024
 const Tebibyte float64 = Gibibyte * 1024
 
-func titlify(s string) string {
+func Titlify(s string) string {
 	return strings.Title(strings.Replace(s, "_", " ", -1))
 }
 
-func boolify(b bool) string {
+func Boolify(b bool) string {
 	if b {
 		return "Yes"
 	} else {
@@ -24,7 +24,7 @@ func boolify(b bool) string {
 
 const None string = ""
 
-func convert(v float64, dp int, perUnit string) string {
+func Convert(v float64, dp int, perUnit string) string {
 	f := fmt.Sprintf("%%0.%df %%s%%s", dp)
 	suffix := ""
 
