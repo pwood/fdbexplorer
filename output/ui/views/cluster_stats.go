@@ -18,8 +18,8 @@ type ClusterStats struct {
 	BytesWritten float64
 }
 
-func UpdateClusterStats(f func(ClusterStats)) func(data.DataSourceUpdate) {
-	return func(dsu data.DataSourceUpdate) {
+func UpdateClusterStats(f func(ClusterStats)) func(data.Update) {
+	return func(dsu data.Update) {
 		f(ClusterStats{
 			TxStarted:    dsu.Root.Cluster.Workload.Transactions.Started.Hz,
 			TxCommitted:  dsu.Root.Cluster.Workload.Transactions.Committed.Hz,

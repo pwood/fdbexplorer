@@ -19,8 +19,8 @@ type ClusterHealth struct {
 	RecoveryDescription string
 }
 
-func UpdateClusterHealth(f func(ClusterHealth)) func(data.DataSourceUpdate) {
-	return func(dsu data.DataSourceUpdate) {
+func UpdateClusterHealth(f func(ClusterHealth)) func(data.Update) {
+	return func(dsu data.Update) {
 		f(ClusterHealth{
 			Healthy:             dsu.Root.Cluster.Data.State.Health,
 			Health:              Titlify(dsu.Root.Cluster.Data.State.Name),

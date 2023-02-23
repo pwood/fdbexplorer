@@ -7,8 +7,8 @@ import (
 	"github.com/pwood/fdbexplorer/output/ui/data"
 )
 
-func UpdateBackupInstances(f func(instance []fdb.BackupInstance)) func(data.DataSourceUpdate) {
-	return func(dsu data.DataSourceUpdate) {
+func UpdateBackupInstances(f func(instance []fdb.BackupInstance)) func(data.Update) {
+	return func(dsu data.Update) {
 		var instances []fdb.BackupInstance
 
 		for _, instance := range dsu.Root.Cluster.Layers.Backup.Instances {
@@ -61,8 +61,8 @@ var ColumnBackupInstanceRecentOperations = components.ColumnImpl[fdb.BackupInsta
 	},
 }
 
-func UpdateBackupTags(f func(instance []fdb.BackupTag)) func(data.DataSourceUpdate) {
-	return func(dsu data.DataSourceUpdate) {
+func UpdateBackupTags(f func(instance []fdb.BackupTag)) func(data.Update) {
+	return func(dsu data.Update) {
 		var tags []fdb.BackupTag
 
 		for id, tag := range dsu.Root.Cluster.Layers.Backup.Tags {

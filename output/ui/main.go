@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-type UpdatableViews func(dsu data.DataSourceUpdate)
+type UpdatableViews func(dsu data.Update)
 
 func New(ds input.StatusProvider) *Main {
 	return &Main{ds: ds, upCh: make(chan struct{})}
@@ -26,7 +26,7 @@ type Main struct {
 	upCh chan struct{}
 	app  *tview.Application
 
-	metadataStore *data.MetadataStore
+	metadataStore *data.Store
 	updatable     []UpdatableViews
 	rawJson       []byte
 
@@ -76,7 +76,7 @@ func (m *Main) updateFromDS() {
 		return
 	}
 
-	dsu := data.DataSourceUpdate{
+	dsu := data.Update{
 		Root: root,
 	}
 
@@ -136,23 +136,23 @@ func (m *Main) Run() {
 
 	_, haveEM := m.ds.(input.ExclusionManager)
 
-	localityDataContent := components.NewDataTable[views.ProcessData](
-		[]components.ColumnDef[views.ProcessData]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnStatus, views.ColumnMachine, views.ColumnLocality, views.ColumnClass, views.ColumnRoles, views.ColumnVersion, views.ColumnUptime},
+	localityDataContent := components.NewDataTable[data.Process](
+		[]components.ColumnDef[data.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnStatus, views.ColumnMachine, views.ColumnLocality, views.ColumnClass, views.ColumnRoles, views.ColumnVersion, views.ColumnUptime},
 		views.All,
 		sorter.Sort)
 
-	usageDataContent := components.NewDataTable[views.ProcessData](
-		[]components.ColumnDef[views.ProcessData]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnRoles, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnNetworkActivity, views.ColumnDiskUsage, views.ColumnDiskActivity},
+	usageDataContent := components.NewDataTable[data.Process](
+		[]components.ColumnDef[data.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnRoles, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnNetworkActivity, views.ColumnDiskUsage, views.ColumnDiskActivity},
 		views.All,
 		sorter.Sort)
 
-	storageDataContent := components.NewDataTable[views.ProcessData](
-		[]components.ColumnDef[views.ProcessData]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnDiskUsage, views.ColumnDiskActivity, views.ColumnKVStorage, views.ColumnStorageDurabilityRate, views.ColumnStorageLag, views.ColumnStorageTotalQueries},
+	storageDataContent := components.NewDataTable[data.Process](
+		[]components.ColumnDef[data.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnDiskUsage, views.ColumnDiskActivity, views.ColumnKVStorage, views.ColumnStorageDurabilityRate, views.ColumnStorageLag, views.ColumnStorageTotalQueries},
 		views.RoleMatch("storage"),
 		sorter.Sort)
 
-	logDataContent := components.NewDataTable[views.ProcessData](
-		[]components.ColumnDef[views.ProcessData]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnDiskUsage, views.ColumnDiskActivity, views.ColumnLogQueueLength, views.ColumnLogDurabilityRate, views.ColumnLogQueueStorage},
+	logDataContent := components.NewDataTable[data.Process](
+		[]components.ColumnDef[data.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnDiskUsage, views.ColumnDiskActivity, views.ColumnLogQueueLength, views.ColumnLogDurabilityRate, views.ColumnLogQueueStorage},
 		views.RoleMatch("log"),
 		sorter.Sort)
 
@@ -180,7 +180,7 @@ func (m *Main) Run() {
 		func(_ fdb.BackupTag) bool { return true },
 		func(i fdb.BackupTag, j fdb.BackupTag) bool { return strings.Compare(i.Id, j.Id) < 0 })
 
-	m.metadataStore = &data.MetadataStore{Metadata: map[string]*views.ProcessMetadata{}}
+	m.metadataStore = &data.Store{Metadata: map[string]*data.Metadata{}}
 
 	m.updatable = []UpdatableViews{
 		m.metadataStore.Update(localityDataContent.Update),
@@ -200,7 +200,7 @@ func (m *Main) Run() {
 		logDataContent.Sort()
 	}
 
-	processDataInput := func(table *tview.Table, content *components.DataTable[views.ProcessData]) func(event *tcell.EventKey) *tcell.EventKey {
+	processDataInput := func(table *tview.Table, content *components.DataTable[data.Process]) func(event *tcell.EventKey) *tcell.EventKey {
 		return func(event *tcell.EventKey) *tcell.EventKey {
 			switch event.Key() {
 			case tcell.KeyRune:

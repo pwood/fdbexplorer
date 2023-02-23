@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"github.com/pwood/fdbexplorer/output/ui/views"
+	"github.com/pwood/fdbexplorer/output/ui/data"
 	"strings"
 )
 
@@ -44,29 +44,29 @@ func (p *SortControl) SortName() string {
 	}
 }
 
-func (p *SortControl) Sort(i views.ProcessData, j views.ProcessData) bool {
-	iKey := i.Process.Address
-	jKey := j.Process.Address
+func (p *SortControl) Sort(i data.Process, j data.Process) bool {
+	iKey := i.FDBData.Address
+	jKey := j.FDBData.Address
 
 	switch p.i {
 	case SortRole:
 		iRole := ""
-		if len(i.Process.Roles) > 0 {
-			iRole = i.Process.Roles[0].Role
+		if len(i.FDBData.Roles) > 0 {
+			iRole = i.FDBData.Roles[0].Role
 		}
 
 		jRole := ""
-		if len(j.Process.Roles) > 0 {
-			jRole = j.Process.Roles[0].Role
+		if len(j.FDBData.Roles) > 0 {
+			jRole = j.FDBData.Roles[0].Role
 		}
 
 		iKey = iRole + iKey
 		jKey = jRole + jKey
 	case SortClass:
-		iKey = i.Process.Class + iKey
-		jKey = j.Process.Class + jKey
+		iKey = i.FDBData.Class + iKey
+		jKey = j.FDBData.Class + jKey
 	case SortUptime:
-		return i.Process.Uptime < j.Process.Uptime
+		return i.FDBData.Uptime < j.FDBData.Uptime
 	case SortSelected:
 		if !i.Metadata.Selected {
 			iKey = "_" + iKey
@@ -76,11 +76,11 @@ func (p *SortControl) Sort(i views.ProcessData, j views.ProcessData) bool {
 			jKey = "_" + jKey
 		}
 	case SortExcluded:
-		if !i.Process.Excluded {
+		if !i.FDBData.Excluded {
 			iKey = "_" + iKey
 		}
 
-		if !j.Process.Excluded {
+		if !j.FDBData.Excluded {
 			jKey = "_" + jKey
 		}
 	}
