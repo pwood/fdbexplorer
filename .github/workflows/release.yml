@@ -47,7 +47,7 @@ jobs:
             fdbexplorer-*
 
   build-linux-amd64:
-    name: Build linux
+    name: Build linux (amd64)
     runs-on: ubuntu-20.04
     steps:
       - name: Set up Go 1.19
