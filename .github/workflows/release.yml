@@ -24,7 +24,7 @@ jobs:
 
       - name: Install FoundationDB Client
         run: |
-          wget -nv https://github.com/apple/foundationdb/releases/download/7.1.27/FoundationDB-7.1.27.pkg -O /tmp/foundationdb.pkg
+          wget -nv https://github.com/apple/foundationdb/releases/download/7.1.27/FoundationDB-7.1.27_x86_64.pkg -O /tmp/foundationdb.pkg
           sudo installer -pkg /tmp/foundationdb.pkg -target /
 
       - name: Get dependencies
