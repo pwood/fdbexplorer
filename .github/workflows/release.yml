@@ -42,7 +42,7 @@ jobs:
       - name: Archive production artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: darwin-build-amd64
+          name: build-darwin-amd64
           path: |
             fdbexplorer-*
 

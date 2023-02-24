@@ -35,7 +35,8 @@ Build are available for:
 * `linux/amd64`
 * `darwin/amd64`
 
-`darwin/arm64` (Mac M1/M2) is waiting for Apple to release an `arm64` version of FoundationDB.
+`darwin/arm64` (Mac M1/M2) is waiting for GitHub to make Mac M1 runners available, Apple have now released an `arm64`
+version of FoundationDB.
 
 Alternatively you may build yourself on a machine that has the `foundationdb-clients` installed by:
 
