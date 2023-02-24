@@ -46,7 +46,7 @@ jobs:
           path: |
             fdbexplorer-*
 
-  build-linux:
+  build-linux-amd64:
     name: Build linux
     runs-on: ubuntu-20.04
     steps:
@@ -81,14 +81,14 @@ jobs:
       - name: Archive production artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: linux-build
+          name: build-linux-amd64
           path: |
             fdbexplorer-*
 
   release:
     name: Release to GitHub
     needs:
-      - build-linux
+      - build-linux-amd64
       - build-darwin-amd64
     runs-on: ubuntu-20.04
     steps:
@@ -101,4 +101,4 @@ jobs:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: false
           files: |
-            *-build/fdbexplorer-*
+            build-*/fdbexplorer-*
