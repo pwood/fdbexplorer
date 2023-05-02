@@ -37,7 +37,8 @@ func (m *Store) Update(u Update) {
 
 	for _, proc := range u.Root.Cluster.Processes {
 		p, _ := m.findOrCreate(proc.Address)
-		p.FDBData = &proc
+		copyProc := proc
+		p.FDBData = &copyProc
 		p.Metadata.Update(proc)
 		p.Metadata.ExclusionInProgress = false
 	}

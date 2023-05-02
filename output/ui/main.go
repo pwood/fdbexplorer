@@ -51,7 +51,7 @@ const (
 )
 
 func (m *Main) updateStatus(message string, colour tcell.Color) {
-	m.app.QueueUpdate(func() {
+	go m.app.QueueUpdateDraw(func() {
 		text := []string{"[", time.Now().Format("15:04:05"), "] ", message}
 		m.statusText.SetText(strings.Join(text, "")).SetTextColor(colour)
 	})
