@@ -37,8 +37,16 @@ type FDB struct {
 }
 
 func (f *FDB) Status() (json.RawMessage, error) {
-	if d, err := f.db.Transact(func(transaction fdb.Transaction) (interface{}, error) {
-		return transaction.Get(fdb.Key("\xff\xff/status/json")).MustGet(), nil
+	if d, err := f.db.ReadTransact(func(tr fdb.ReadTransaction) (interface{}, error) {
+		if err := tr.Options().SetReadLockAware(); err != nil {
+			return nil, err
+		}
+
+		if err := tr.Options().SetPrioritySystemImmediate(); err != nil {
+			return nil, err
+		}
+
+		return tr.Get(fdb.Key("\xff\xff/status/json")).MustGet(), nil
 	}); err != nil {
 		return nil, fmt.Errorf("foundationdb err: %w", err)
 	} else {
@@ -48,6 +56,14 @@ func (f *FDB) Status() (json.RawMessage, error) {
 
 func (f *FDB) ExcludeProcess(excludeKey string) error {
 	if _, err := f.db.Transact(func(tr fdb.Transaction) (interface{}, error) {
+		if err := tr.Options().SetLockAware(); err != nil {
+			return nil, err
+		}
+
+		if err := tr.Options().SetPrioritySystemImmediate(); err != nil {
+			return nil, err
+		}
+
 		if err := tr.Options().SetSpecialKeySpaceEnableWrites(); err != nil {
 			return nil, err
 		}
@@ -64,6 +80,14 @@ func (f *FDB) ExcludeProcess(excludeKey string) error {
 
 func (f *FDB) IncludeProcess(includeKey string) error {
 	if _, err := f.db.Transact(func(tr fdb.Transaction) (interface{}, error) {
+		if err := tr.Options().SetLockAware(); err != nil {
+			return nil, err
+		}
+
+		if err := tr.Options().SetPrioritySystemImmediate(); err != nil {
+			return nil, err
+		}
+
 		if err := tr.Options().SetSpecialKeySpaceEnableWrites(); err != nil {
 			return nil, err
 		}
@@ -87,7 +111,15 @@ func (f *FDB) ExclusionInProgressProcesses() ([]string, error) {
 }
 
 func (f *FDB) getProcesses(keyPrefix string) ([]string, error) {
-	if excluded, err := f.db.Transact(func(tr fdb.Transaction) (interface{}, error) {
+	if excluded, err := f.db.ReadTransact(func(tr fdb.ReadTransaction) (interface{}, error) {
+		if err := tr.Options().SetReadLockAware(); err != nil {
+			return nil, err
+		}
+
+		if err := tr.Options().SetPrioritySystemImmediate(); err != nil {
+			return nil, err
+		}
+
 		if err := tr.Options().SetAccessSystemKeys(); err != nil {
 			return nil, err
 		}
