@@ -42,6 +42,10 @@ func (f *FDB) Status() (json.RawMessage, error) {
 			return nil, err
 		}
 
+		if err := tr.Options().SetLockAware(); err != nil {
+			return nil, err
+		}
+
 		if err := tr.Options().SetPrioritySystemImmediate(); err != nil {
 			return nil, err
 		}
@@ -56,6 +60,10 @@ func (f *FDB) Status() (json.RawMessage, error) {
 
 func (f *FDB) ExcludeProcess(excludeKey string) error {
 	if _, err := f.db.Transact(func(tr fdb.Transaction) (interface{}, error) {
+		if err := tr.Options().SetReadLockAware(); err != nil {
+			return nil, err
+		}
+
 		if err := tr.Options().SetLockAware(); err != nil {
 			return nil, err
 		}
@@ -80,6 +88,10 @@ func (f *FDB) ExcludeProcess(excludeKey string) error {
 
 func (f *FDB) IncludeProcess(includeKey string) error {
 	if _, err := f.db.Transact(func(tr fdb.Transaction) (interface{}, error) {
+		if err := tr.Options().SetReadLockAware(); err != nil {
+			return nil, err
+		}
+
 		if err := tr.Options().SetLockAware(); err != nil {
 			return nil, err
 		}
@@ -113,6 +125,10 @@ func (f *FDB) ExclusionInProgressProcesses() ([]string, error) {
 func (f *FDB) getProcesses(keyPrefix string) ([]string, error) {
 	if excluded, err := f.db.ReadTransact(func(tr fdb.ReadTransaction) (interface{}, error) {
 		if err := tr.Options().SetReadLockAware(); err != nil {
+			return nil, err
+		}
+
+		if err := tr.Options().SetLockAware(); err != nil {
 			return nil, err
 		}
 
