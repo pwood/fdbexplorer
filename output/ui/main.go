@@ -186,12 +186,24 @@ func (m *Main) Run() {
 	backupTagsContent := components.NewDataTable[fdb.BackupTag](
 		[]components.ColumnDef[fdb.BackupTag]{views.ColumnBackupTagId, views.ColumnBackupStatus, views.ColumnBackupRunning, views.ColumnBackupRestorable, views.ColumnBackupSecondsBehind, views.ColumnBackupRestorableVersion, views.ColumnBackupRangeBytes, views.ColumnBackupLogBytes})
 
+	drBackupInstanceColumns := []components.ColumnDef[fdb.DRBackupInstance]{views.ColumnDRBackupInstanceId, views.ColumnDRBackupInstanceLastUpdated, views.ColumnDRBackupInstanceProcessCPU, views.ColumnDRBackupInstanceMemoryUsage, views.ColumnDRBackupInstanceResidentSize, views.ColumnDRBackupInstanceVersion}
+	drBackupTagColumns := []components.ColumnDef[fdb.DRBackupTag]{views.ColumnDRBackupTagId, views.ColumnDRBackupTagRunning, views.ColumnDRBackupTagRestorable, views.ColumnDRBackupTagSecondsBehind, views.ColumnDRBackupTagState, views.ColumnDRBackupTagRangeBytes, views.ColumnDRBackupTagLogBytes, views.ColumnDRBackupTagMutationStream}
+
+	drBackupInstancesContent := components.NewDataTable[fdb.DRBackupInstance](drBackupInstanceColumns)
+	drBackupTagsContent := components.NewDataTable[fdb.DRBackupTag](drBackupTagColumns)
+	drBackupDestInstancesContent := components.NewDataTable[fdb.DRBackupInstance](drBackupInstanceColumns)
+	drBackupDestTagsContent := components.NewDataTable[fdb.DRBackupTag](drBackupTagColumns)
+
 	m.updatable = []UpdatableViews{
 		m.processStore.Update,
 		views.UpdateClusterHealth(clusterHealthContent.Update),
 		views.UpdateClusterStats(clusterStatsContent.Update),
 		views.UpdateBackupInstances(backupInstancesContent.Update),
 		views.UpdateBackupTags(backupTagsContent.Update),
+		views.UpdateDrBackupInstances(drBackupInstancesContent.Update),
+		views.UpdateDrBackupTags(drBackupTagsContent.Update),
+		views.UpdateDrBackupDestInstances(drBackupDestInstancesContent.Update),
+		views.UpdateDrBackupDestTags(drBackupDestTagsContent.Update),
 	}
 
 	processDataInput := func(table *tview.Table, content *components.DataTable[process.Process]) func(event *tcell.EventKey) *tcell.EventKey {
@@ -228,12 +240,39 @@ func (m *Main) Run() {
 	backupFlex.AddItem(backupInstances, 0, 1, false)
 	backupFlex.AddItem(backupTags, 0, 1, false)
 
+	drBackupInstances := tview.NewTable().SetContent(drBackupInstancesContent).SetFixed(1, 0).SetSelectable(false, false)
+	drBackupTags := tview.NewTable().SetContent(drBackupTagsContent).SetFixed(1, 0).SetSelectable(false, false)
+	drBackupDestInstances := tview.NewTable().SetContent(drBackupDestInstancesContent).SetFixed(1, 0).SetSelectable(false, false)
+	drBackupDestTags := tview.NewTable().SetContent(drBackupDestTagsContent).SetFixed(1, 0).SetSelectable(false, false)
+
+	drFlex := tview.NewFlex()
+	drFlex.SetDirection(tview.FlexRow)
+	drFlex.AddItem(drBackupInstances, 0, 2, false)
+	drFlex.AddItem(drBackupTags, 0, 1, false)
+	drFlex.SetBorder(true)
+	drFlex.SetTitle("'Source' (Local) Cluster")
+	drFlex.SetTitleColor(tcell.ColorAqua)
+
+	drDestFelx := tview.NewFlex()
+	drDestFelx.SetDirection(tview.FlexRow)
+	drDestFelx.AddItem(drBackupDestInstances, 0, 2, false)
+	drDestFelx.AddItem(drBackupDestTags, 0, 1, false)
+	drDestFelx.SetBorder(true)
+	drDestFelx.SetTitle("'Destination' (Remote) Cluster")
+	drDestFelx.SetTitleColor(tcell.ColorAqua)
+
+	drContainer := tview.NewFlex()
+	drContainer.SetDirection(tview.FlexRow)
+	drContainer.AddItem(drFlex, 0, 1, false)
+	drContainer.AddItem(drDestFelx, 0, 1, false)
+
 	m.slideShow = components.NewSlideShow()
 	m.slideShow.Add("Locality", locality)
 	m.slideShow.Add("Usage Overview", usage)
 	m.slideShow.Add("Storage Processes", storage)
 	m.slideShow.Add("Log Processes", logs)
 	m.slideShow.Add("Backups", backupFlex)
+	m.slideShow.Add("DR Backups", drContainer)
 
 	m.statusText = tview.NewTextView()
 	m.statusText.SetTextAlign(tview.AlignRight)

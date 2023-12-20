@@ -15,7 +15,9 @@ type Cluster struct {
 }
 
 type Layers struct {
-	Backup Backup `json:"backup"`
+	Backup       Backup   `json:"backup"`
+	DRBackup     DRBackup `json:"dr_backup"`
+	DRBackupDest DRBackup `json:"dr_backup_dest"`
 }
 
 type Backup struct {
@@ -53,6 +55,34 @@ type BackupTag struct {
 	RangeBytesWritten           int     `json:"range_bytes_written"`
 	RunningBackup               bool    `json:"running_backup"`
 	RunningBackupIsRestorable   bool    `json:"running_backup_is_restorable"`
+}
+
+type DRBackup struct {
+	Instances map[string]DRBackupInstance
+	Paused    bool `json:"paused"`
+	Tags      map[string]DRBackupTag
+}
+
+type DRBackupInstance struct {
+	ConfiguredWorkers    int     `json:"configured_workers"`
+	Id                   string  `json:"id"`
+	LastUpdated          float64 `json:"last_updated"`
+	MainThreadCPUSeconds float64 `json:"main_thread_cpu_seconds"`
+	MemoryUsage          int     `json:"memory_usage"`
+	ProcessCPUSeconds    float64 `json:"process_cpu_seconds"`
+	ResidentSize         int     `json:"resident_size"`
+	Version              string  `json:"version"`
+}
+
+type DRBackupTag struct {
+	Id                      string  `json:"-"`
+	BackupState             string  `json:"backup_state"`
+	MutationSteamId         string  `json:"mutation_stream_id"`
+	MutationLogBytesWritten int     `json:"mutation_log_bytes_written"`
+	RangeBytesWritten       int     `json:"range_bytes_written"`
+	RunningBackup           bool    `json:"running_backup"`
+	BackupRestorable        bool    `json:"running_backup_is_restorable"`
+	SecondsBehind           float64 `json:"seconds_behind"`
 }
 
 type Data struct {
