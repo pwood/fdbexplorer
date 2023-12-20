@@ -3,7 +3,7 @@ module github.com/pwood/fdbexplorer
 go 1.19
 
 require (
-	github.com/apple/foundationdb/bindings/go v0.0.0-20231211235005-3d3ad1ce80ce
+	github.com/apple/foundationdb/bindings/go v0.0.0-20221013231218-148f8157d660
 	github.com/carlmjohnson/versioninfo v0.22.5
 	github.com/gdamore/tcell/v2 v2.7.0
 	github.com/rivo/tview v0.0.0-20231206124440-5f078138442e
