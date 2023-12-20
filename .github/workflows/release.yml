@@ -11,10 +11,10 @@ jobs:
     name: Build darwin (amd64)
     runs-on: macos-latest
     steps:
-      - name: Set up Go 1.19
+      - name: Set up Go 1.21
         uses: actions/setup-go@v2
         with:
-          go-version: 1.19
+          go-version: 1.21
         id: go
 
       - name: Check out code into the Go module directory
@@ -24,7 +24,7 @@ jobs:
 
       - name: Install FoundationDB Client
         run: |
-          wget -nv https://github.com/apple/foundationdb/releases/download/7.1.27/FoundationDB-7.1.27_x86_64.pkg -O /tmp/foundationdb.pkg
+          wget -nv https://github.com/apple/foundationdb/releases/download/7.1.49/FoundationDB-7.1.49_x86_64.pkg -O /tmp/foundationdb.pkg
           sudo installer -pkg /tmp/foundationdb.pkg -target /
 
       - name: Get dependencies
@@ -50,10 +50,10 @@ jobs:
     name: Build linux (amd64)
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.19
+      - name: Set up Go 1.21
         uses: actions/setup-go@v2
         with:
-          go-version: 1.19
+          go-version: 1.21
         id: go
 
       - name: Check out code into the Go module directory
@@ -63,7 +63,7 @@ jobs:
 
       - name: Install FoundationDB Client
         run: |
-          wget -nv https://github.com/apple/foundationdb/releases/download/7.1.27/foundationdb-clients_7.1.27-1_amd64.deb -O /tmp/foundationdb-clients.deb
+          wget -nv https://github.com/apple/foundationdb/releases/download/7.1.49/foundationdb-clients_7.1.49-1_amd64.deb -O /tmp/foundationdb-clients.deb
           sudo dpkg -i /tmp/foundationdb-clients.deb
 
       - name: Get dependencies
