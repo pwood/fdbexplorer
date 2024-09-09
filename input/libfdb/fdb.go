@@ -23,7 +23,7 @@ func init() {
 }
 
 func NewFDB() (*FDB, bool) {
-	fdb.MustAPIVersion(710)
+	fdb.MustAPIVersion(700)
 
 	f := &FDB{clusterFile: *clusterFile}
 	f.db = fdb.MustOpenDatabase(f.clusterFile)
