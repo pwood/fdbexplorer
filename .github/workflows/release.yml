@@ -46,6 +46,45 @@ jobs:
           path: |
             fdbexplorer-*
 
+  build-darwin-arm64:
+    name: Build darwin (arm64)
+    runs-on: macos-latest
+    steps:
+      - name: Set up Go 1.21
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.21
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Install FoundationDB Client
+        run: |
+          wget -nv https://github.com/apple/foundationdb/releases/download/7.3.43/FoundationDB-7.3.43_arm64.pkg -O /tmp/foundationdb.pkg
+          sudo installer -pkg /tmp/foundationdb.pkg -target /
+
+      - name: Get dependencies
+        run: |
+          go get -v -t -d ./...
+
+      - name: Build darwin/arm64 binary
+        run: |
+          GOOS=darwin GOARCH=arm64 go build -o fdbexplorer-darwin-arm64
+
+      - name: Calculate checksums
+        run: |
+          shasum -a 256 ./fdbexplorer-darwin-arm64 > fdbexplorer-darwin-arm64.sha256
+
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-darwin-arm64
+          path: |
+            fdbexplorer-*
+
   build-linux-amd64:
     name: Build linux (amd64)
     runs-on: ubuntu-20.04
@@ -90,6 +129,7 @@ jobs:
     needs:
       - build-linux-amd64
       - build-darwin-amd64
+      - build-darwin-arm64
     runs-on: ubuntu-20.04
     steps:
       - name: Download all artifacts
