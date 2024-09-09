@@ -7,11 +7,16 @@ type Root struct {
 type Cluster struct {
 	Processes         map[string]Process `json:"processes"`
 	DatabaseAvailable bool               `json:"database_available"`
+	DatabaseLockState DatabaseLockState  `json:"database_lock_state"`
 	Workload          Workload           `json:"workload"`
 	Messages          []Message          `json:"messages"`
 	RecoveryState     RecoveryState      `json:"recovery_state"`
 	Data              Data               `json:"data"`
 	Layers            Layers             `json:"layers"`
+}
+
+type DatabaseLockState struct {
+	Locked bool `json:"locked"`
 }
 
 type Layers struct {

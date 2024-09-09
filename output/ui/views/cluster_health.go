@@ -17,6 +17,8 @@ type ClusterHealth struct {
 
 	RecoveryState       string
 	RecoveryDescription string
+
+	DatabaseLocked bool
 }
 
 func UpdateClusterHealth(f func(ClusterHealth)) func(process.Update) {
@@ -29,6 +31,7 @@ func UpdateClusterHealth(f func(ClusterHealth)) func(process.Update) {
 			RebalanceInFlight:   dsu.Root.Cluster.Data.MovingData.InFlightBytes,
 			RecoveryState:       Titlify(dsu.Root.Cluster.RecoveryState.Name),
 			RecoveryDescription: dsu.Root.Cluster.RecoveryState.Description,
+			DatabaseLocked:      dsu.Root.Cluster.DatabaseLockState.Locked,
 		})
 	}
 }
@@ -79,6 +82,20 @@ var StatRebalanceInflight = components.ColumnImpl[ClusterHealth]{
 	ColName: "Rebalance In-flight",
 	DataFn: func(h ClusterHealth) string {
 		return Convert(float64(h.RebalanceInFlight), 1, None)
+	},
+}
+
+var StatDatabaseLocked = components.ColumnImpl[ClusterHealth]{
+	ColName: "Database Locked",
+	DataFn: func(h ClusterHealth) string {
+		return Boolify(h.DatabaseLocked)
+	},
+	ColorFn: func(h ClusterHealth) tcell.Color {
+		if h.DatabaseLocked {
+			return tcell.ColorRed
+		} else {
+			return tcell.ColorWhite
+		}
 	},
 }
 

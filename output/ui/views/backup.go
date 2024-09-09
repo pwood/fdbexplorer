@@ -280,7 +280,7 @@ var ColumnDRBackupTagRunning = components.ColumnImpl[fdb.DRBackupTag]{
 var ColumnDRBackupTagRestorable = components.ColumnImpl[fdb.DRBackupTag]{
 	ColName: "Restorable",
 	DataFn: func(instance fdb.DRBackupTag) string {
-		return Boolify(instance.RunningBackup)
+		return Boolify(instance.BackupRestorable)
 	},
 }
 

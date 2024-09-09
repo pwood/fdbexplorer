@@ -170,7 +170,7 @@ func (m *Main) Run() {
 		{views.StatClusterHealth, views.StatRebalanceQueued},
 		{views.StatReplicasRemaining, views.StatRebalanceInflight},
 		{views.StatRecoveryState, views.StatEmpty},
-		{views.StatRecoveryDescription, views.StatEmpty},
+		{views.StatRecoveryDescription, views.StatDatabaseLocked},
 	})
 
 	clusterStatsContent := components.NewStatsGrid([][]components.ColumnDef[views.ClusterStats]{
