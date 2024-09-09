@@ -40,7 +40,7 @@ jobs:
           shasum -a 256 ./fdbexplorer-darwin-amd64 > fdbexplorer-darwin-amd64.sha256
 
       - name: Archive production artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build-darwin-amd64
           path: |
@@ -79,7 +79,7 @@ jobs:
           shasum -a 256 ./fdbexplorer-darwin-arm64 > fdbexplorer-darwin-arm64.sha256
 
       - name: Archive production artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build-darwin-arm64
           path: |
@@ -118,7 +118,7 @@ jobs:
           sha256sum ./fdbexplorer-linux-amd64 > fdbexplorer-linux-amd64.sha256
 
       - name: Archive production artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build-linux-amd64
           path: |
