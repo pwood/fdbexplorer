@@ -29,18 +29,16 @@ jobs:
         with:
           submodules: true
 
-      - name: Download FoundationDB Client
-        run: |
-          wget -nv https://github.com/apple/foundationdb/releases/download/${{ matrix.versions.fdbversion }}/${{ matrix.versions.fdbclient }} -O /tmp/foundationdb.client
-
       - name: Install FoundationDB Client (darwin)
         if: "${{ matrix.versions.os == 'darwin' }}"
         run: |
+          wget -nv https://github.com/apple/foundationdb/releases/download/${{ matrix.versions.fdbversion }}/${{ matrix.versions.fdbclient }} -O /tmp/foundationdb.client
           sudo installer -pkg /tmp/foundationdb.client -target /
 
       - name: Install FoundationDB Client (linux)
         if: "${{ matrix.versions.os == 'linux' }}"
         run: |
+          wget -nv https://github.com/apple/foundationdb/releases/download/${{ matrix.versions.fdbversion }}/${{ matrix.versions.fdbclient }} -O /tmp/foundationdb.client
           sudo dpkg -i /tmp/foundationdb.client
 
       - name: Get dependencies
