@@ -3,8 +3,8 @@ name: "tagged-release"
 
 on:
   push:
-    branches:
-      - mvc-builds
+    tags:
+      - "v[0-9].[0-9]+.[0-9]+"
 
 jobs:
   build:
@@ -76,10 +76,10 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4.1.7
 
-#      - name: Release to GitHub Releases
-#        uses: "marvinpinto/action-automatic-releases@latest"
-#        with:
-#          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-#          prerelease: false
-#          files: |
-#            build-*/fdbexplorer-*
+      - name: Release to GitHub Releases
+        uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: false
+          files: |
+            build-*/fdbexplorer-*
