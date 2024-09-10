@@ -11,12 +11,12 @@ jobs:
     strategy:
       matrix:
         versions: [
-          { os: "darwin", arch: "amd64", fdbversion: "7.1.48", fdbclient: "FoundationDB-7.1.48_x86_64.pkg" },
-          { os: "darwin", arch: "arm64", fdbversion: "7.1.48", fdbclient: "FoundationDB-7.1.48_arm64.pkg" },
-          { os: "linux", arch: "amd64", fdbversion: "7.1.48", fdbclient: "foundationdb-clients_7.1.48-1_amd64.deb" }
+          { os: "darwin", distro: "darwin", arch: "amd64", fdbversion: "7.1.48", fdbclient: "FoundationDB-7.1.48_x86_64.pkg" },
+          { os: "darwin", distro: "darwin", arch: "arm64", fdbversion: "7.1.48", fdbclient: "FoundationDB-7.1.48_arm64.pkg" },
+          { os: "linux", distro: "ubuntu", arch: "amd64", fdbversion: "7.1.48", fdbclient: "foundationdb-clients_7.1.48-1_amd64.deb" }
         ]
     name: Build ${{ matrix.versions.os }} (${{ matrix.versions.arch }}) - ${{ matrix.versions.fdbversion }}
-    runs-on: macos-latest
+    runs-on: ${{ matrix.versions.distro }}-latest
     steps:
       - name: Set up Go 1.21
         uses: actions/setup-go@v2
@@ -32,14 +32,14 @@ jobs:
       - name: Install FoundationDB Client (darwin)
         if: "${{ matrix.versions.os == 'darwin' }}"
         run: |
-          wget -nv https://github.com/apple/foundationdb/releases/download/${{ matrix.versions.fdbversion }}/${{ matrix.versions.fdbclient }} -O /tmp/foundationdb.client
-          sudo installer -pkg /tmp/foundationdb.client -target /
+          wget -nv https://github.com/apple/foundationdb/releases/download/${{ matrix.versions.fdbversion }}/${{ matrix.versions.fdbclient }} -O /tmp/foundationdb.pkg
+          sudo installer -pkg /tmp/foundationdb.pkg -target /
 
       - name: Install FoundationDB Client (linux)
         if: "${{ matrix.versions.os == 'linux' }}"
         run: |
-          wget -nv https://github.com/apple/foundationdb/releases/download/${{ matrix.versions.fdbversion }}/${{ matrix.versions.fdbclient }} -O /tmp/foundationdb.client
-          sudo dpkg -i /tmp/foundationdb.client
+          wget -nv https://github.com/apple/foundationdb/releases/download/${{ matrix.versions.fdbversion }}/${{ matrix.versions.fdbclient }} -O /tmp/foundationdb.deb
+          sudo dpkg -i /tmp/foundationdb.deb
 
       - name: Get dependencies
         run: |
