@@ -3,12 +3,19 @@ name: "tagged-release"
 
 on:
   push:
-    tags:
-      - "v[0-9].[0-9]+.[0-9]+"
+    branches:
+      - mvc-builds
 
 jobs:
-  build-darwin-amd64:
-    name: Build darwin (amd64)
+  build:
+    strategy:
+      matrix:
+        versions: [
+          { os: "darwin", arch: "amd64", fdbversion: "7.1.48", fdbclient: "FoundationDB-7.1.48_x86_64.pkg" },
+          { os: "darwin", arch: "arm64", fdbversion: "7.1.48", fdbclient: "FoundationDB-7.1.48_arm64.pkg" },
+          { os: "linux", arch: "amd64", fdbversion: "7.1.48", fdbclient: "foundationdb-clients_7.1.48-1_amd64.deb" }
+        ]
+    name: Build ${{ matrix.versions.os }} (${{ matrix.versions.arch }}) - ${{ matrix.versions.fdbversion }}
     runs-on: macos-latest
     steps:
       - name: Set up Go 1.21
@@ -22,123 +29,56 @@ jobs:
         with:
           submodules: true
 
-      - name: Install FoundationDB Client
+      - name: Download FoundationDB Client
         run: |
-          wget -nv https://github.com/apple/foundationdb/releases/download/7.1.48/FoundationDB-7.1.48_x86_64.pkg -O /tmp/foundationdb.pkg
-          sudo installer -pkg /tmp/foundationdb.pkg -target /
+          wget -nv https://github.com/apple/foundationdb/releases/download/${{ matrix.versions.fdbversion }}/${{ matrix.versions.fdbclient }} -O /tmp/foundationdb.client
+
+      - name: Install FoundationDB Client (darwin)
+        if: "${{ matrix.versions.os == 'darwin' }}"
+        run: |
+          sudo installer -pkg /tmp/foundationdb.client -target /
+
+      - name: Install FoundationDB Client (linux)
+        if: "${{ matrix.versions.os == 'linux' }}"
+        run: |
+          sudo dpkg -i /tmp/foundationdb.client
 
       - name: Get dependencies
         run: |
           go get -v -t -d ./...
 
-      - name: Build darwin/amd64 binary
+      - name: Override specific FoundationDB Go Binding
         run: |
-          GOOS=darwin GOARCH=amd64 go build -o fdbexplorer-darwin-amd64
+          go get github.com/apple/foundationdb/bindings/go@${{matrix.versions.fdbversion}}
+
+      - name: Build binary
+        run: |
+          GOOS=${{matrix.versions.os}} GOARCH=${{matrix.versions.arch}} go build -o fdbexplorer-${{matrix.versions.os}}-${{matrix.versions.arch}}-${{ matrix.versions.fdbversion }}
 
       - name: Calculate checksums
         run: |
-          shasum -a 256 ./fdbexplorer-darwin-amd64 > fdbexplorer-darwin-amd64.sha256
+          shasum -a 256 ./fdbexplorer-${{matrix.versions.os}}-${{matrix.versions.arch}}-${{ matrix.versions.fdbversion }} > fdbexplorer-${{matrix.versions.os}}-${{matrix.versions.arch}}-${{ matrix.versions.fdbversion }}.sha256
 
       - name: Archive production artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: build-darwin-amd64
-          path: |
-            fdbexplorer-*
-
-  build-darwin-arm64:
-    name: Build darwin (arm64)
-    runs-on: macos-latest
-    steps:
-      - name: Set up Go 1.21
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.21
-        id: go
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
-        with:
-          submodules: true
-
-      - name: Install FoundationDB Client
-        run: |
-          wget -nv https://github.com/apple/foundationdb/releases/download/7.1.48/FoundationDB-7.1.48_arm64.pkg -O /tmp/foundationdb.pkg
-          sudo installer -pkg /tmp/foundationdb.pkg -target /
-
-      - name: Get dependencies
-        run: |
-          go get -v -t -d ./...
-
-      - name: Build darwin/arm64 binary
-        run: |
-          GOOS=darwin GOARCH=arm64 go build -o fdbexplorer-darwin-arm64
-
-      - name: Calculate checksums
-        run: |
-          shasum -a 256 ./fdbexplorer-darwin-arm64 > fdbexplorer-darwin-arm64.sha256
-
-      - name: Archive production artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-darwin-arm64
-          path: |
-            fdbexplorer-*
-
-  build-linux-amd64:
-    name: Build linux (amd64)
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Set up Go 1.21
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.21
-        id: go
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
-        with:
-          submodules: true
-
-      - name: Install FoundationDB Client
-        run: |
-          wget -nv https://github.com/apple/foundationdb/releases/download/7.1.48/foundationdb-clients_7.1.48-1_amd64.deb -O /tmp/foundationdb-clients.deb
-          sudo dpkg -i /tmp/foundationdb-clients.deb
-
-      - name: Get dependencies
-        run: |
-          go get -v -t -d ./...
-
-      - name: Build linux/amd64 binary
-        run: |
-          GOOS=linux GOARCH=amd64 go build -o fdbexplorer-linux-amd64
-
-      - name: Calculate checksums
-        run: |
-          sha256sum ./fdbexplorer-linux-amd64 > fdbexplorer-linux-amd64.sha256
-
-      - name: Archive production artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-linux-amd64
+          name: build-${{matrix.versions.os}}-${{matrix.versions.arch}}-${{ matrix.versions.fdbversion }}
           path: |
             fdbexplorer-*
 
   release:
     name: Release to GitHub
     needs:
-      - build-linux-amd64
-      - build-darwin-amd64
-      - build-darwin-arm64
+      - build
     runs-on: ubuntu-20.04
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4.1.7
 
-      - name: Release to GitHub Releases
-        uses: "marvinpinto/action-automatic-releases@latest"
-        with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          prerelease: false
-          files: |
-            build-*/fdbexplorer-*
+#      - name: Release to GitHub Releases
+#        uses: "marvinpinto/action-automatic-releases@latest"
+#        with:
+#          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+#          prerelease: false
+#          files: |
+#            build-*/fdbexplorer-*
