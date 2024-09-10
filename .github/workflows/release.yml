@@ -13,7 +13,10 @@ jobs:
         versions: [
           { os: "darwin", distro: "macos", arch: "amd64", fdbversion: "7.1.48", fdbclient: "FoundationDB-7.1.48_x86_64.pkg" },
           { os: "darwin", distro: "macos", arch: "arm64", fdbversion: "7.1.48", fdbclient: "FoundationDB-7.1.48_arm64.pkg" },
-          { os: "linux", distro: "ubuntu", arch: "amd64", fdbversion: "7.1.48", fdbclient: "foundationdb-clients_7.1.48-1_amd64.deb" }
+          { os: "linux", distro: "ubuntu", arch: "amd64", fdbversion: "7.1.48", fdbclient: "foundationdb-clients_7.1.48-1_amd64.deb" },
+          { os: "darwin", distro: "macos", arch: "amd64", fdbversion: "7.3.43", fdbclient: "FoundationDB-7.3.43_x86_64.pkg" },
+          { os: "darwin", distro: "macos", arch: "arm64", fdbversion: "7.3.43", fdbclient: "FoundationDB-7.3.43_arm64.pkg" },
+          { os: "linux", distro: "ubuntu", arch: "amd64", fdbversion: "7.3.43", fdbclient: "foundationdb-clients_7.3.43-1_amd64.deb" }
         ]
     name: Build ${{ matrix.versions.os }} (${{ matrix.versions.arch }}) - ${{ matrix.versions.fdbversion }}
     runs-on: ${{ matrix.versions.distro }}-latest
