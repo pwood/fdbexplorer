@@ -30,13 +30,27 @@ This tool is early in its life, suggestions or constructive criticism are welcom
 
 Download the latest release for your operating system and architecture from: [https://github.com/pwood/fdbexplorer/releases](https://github.com/pwood/fdbexplorer/releases)
 
-Build are available for:
-
+There are many builds, please choose one that is appropriate.
 * `linux/amd64`
 * `darwin/amd64`
+* `darwin/arm64`
 
-`darwin/arm64` (Mac M1/M2) is waiting for GitHub to make Mac M1 runners available, Apple have now released an `arm64`
-version of FoundationDB.
+During the GitHub Action pipeline different artefacts for 7.1.X and 7.3.X are built, compiled against the retrospective
+version of the Go bindings and `libfdb_c` library. You should choose the distribution that matches the version of the 
+FoundationDB client libraries you have installed system-wide.
+
+### Multi-version client
+
+If you are attempting to use a [multi-version client](https://apple.github.io/foundationdb/api-general.html#multi-version-client)
+then you should use the version as above that is supported by your system installed FoundationDB client library. You may
+be able to override this with `LD_LIBRARY_PATH` if you wish to control which library is referenced.
+
+As per FoundationDB documentation, you should provide the locations to other versions you wish to support by using 
+the `FDB_NETWORK_OPTION_EXTERNAL_CLIENT_DIRECTORY` environment variable. 
+
+`fdbexplorer` currently requires `libfdb_c` to support API version **700** or higher.
+
+### Build from source
 
 Alternatively you may build yourself on a machine that has the `foundationdb-clients` installed by:
 
