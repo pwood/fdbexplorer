@@ -16,7 +16,7 @@ var clusterFile *string
 func init() {
 	defaultClusterFile, found := os.LookupEnv("FDB_CLUSTER_FILE")
 	if !found {
-		defaultClusterFile = "/etc/foundationdb/fdb.cluster"
+		defaultClusterFile = fdb.DefaultClusterFile
 	}
 
 	clusterFile = flag.String("cluster-file", defaultClusterFile, "Location of FoundationDB cluster file, environment variable FDB_CLUSTER_FILE also obeyed.")

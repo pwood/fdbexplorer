@@ -54,7 +54,18 @@ jobs:
 
       - name: Build binary
         run: |
-          GOOS=${{matrix.versions.os}} GOARCH=${{matrix.versions.arch}} go build -o fdbexplorer-${{matrix.versions.os}}-${{matrix.versions.arch}}-${{ matrix.versions.fdbversion }}
+          GOOS=${{matrix.versions.os}} GOARCH=${{matrix.versions.arch}} CGO_ENABLED=1 go env
+          GOOS=${{matrix.versions.os}} GOARCH=${{matrix.versions.arch}} CGO_ENABLED=1 go build -x -o fdbexplorer-${{matrix.versions.os}}-${{matrix.versions.arch}}-${{ matrix.versions.fdbversion }}
+
+      - name: Run ldd tool on output (darwin)
+        if: "${{ matrix.versions.os == 'darwin' }}"
+        run: |
+          otool -L fdbexplorer-${{matrix.versions.os}}-${{matrix.versions.arch}}-${{ matrix.versions.fdbversion }}
+
+      - name: Run ldd tool on output (linux)
+        if: "${{ matrix.versions.os == 'linux' }}"
+        run: |
+          ldd fdbexplorer-${{matrix.versions.os}}-${{matrix.versions.arch}}-${{ matrix.versions.fdbversion }}
 
       - name: Calculate checksums
         run: |
