@@ -2,9 +2,9 @@
 name: "tagged-release"
 
 on:
-  push:
-    tags:
-      - "v[0-9].[0-9]+.[0-9]+"
+  push: {}
+#    tags:
+#      - "v[0-9].[0-9]+.[0-9]+"
 
 jobs:
   build:
@@ -54,7 +54,7 @@ jobs:
 
       - name: Build binary
         run: |
-          GOOS=${{matrix.versions.os}} GOARCH=${{matrix.versions.arch}} go build -o fdbexplorer-${{matrix.versions.os}}-${{matrix.versions.arch}}-${{ matrix.versions.fdbversion }}
+          GOOS=${{matrix.versions.os}} GOARCH=${{matrix.versions.arch}} go build -x -o fdbexplorer-${{matrix.versions.os}}-${{matrix.versions.arch}}-${{ matrix.versions.fdbversion }}
 
       - name: Calculate checksums
         run: |
@@ -67,19 +67,19 @@ jobs:
           path: |
             fdbexplorer-*
 
-  release:
-    name: Release to GitHub
-    needs:
-      - build
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4.1.7
-
-      - name: Release to GitHub Releases
-        uses: "marvinpinto/action-automatic-releases@latest"
-        with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          prerelease: false
-          files: |
-            build-*/fdbexplorer-*
+#  release:
+#    name: Release to GitHub
+#    needs:
+#      - build
+#    runs-on: ubuntu-20.04
+#    steps:
+#      - name: Download all artifacts
+#        uses: actions/download-artifact@v4.1.7
+#
+#      - name: Release to GitHub Releases
+#        uses: "marvinpinto/action-automatic-releases@latest"
+#        with:
+#          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+#          prerelease: false
+#          files: |
+#            build-*/fdbexplorer-*
