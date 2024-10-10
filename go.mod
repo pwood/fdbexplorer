@@ -1,6 +1,6 @@
 module github.com/pwood/fdbexplorer
 
-go 1.19
+go 1.23
 
 require (
 	github.com/apple/foundationdb/bindings/go v0.0.0-20231214235113-ca50d27df02b

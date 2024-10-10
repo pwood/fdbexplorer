@@ -1,6 +1,7 @@
 package process
 
 import (
+	"net/netip"
 	"strings"
 )
 
@@ -44,45 +45,51 @@ func (p *SortControl) SortName() string {
 }
 
 func (p *SortControl) Sort(i Process, j Process) bool {
-	iKey := i.FDBData.Address
-	jKey := j.FDBData.Address
+	iKey := ""
+	jKey := ""
 
 	switch p.i {
 	case SortRole:
-		iRole := ""
 		if len(i.FDBData.Roles) > 0 {
-			iRole = i.FDBData.Roles[0].Role
+			iKey = i.FDBData.Roles[0].Role
 		}
 
-		jRole := ""
 		if len(j.FDBData.Roles) > 0 {
-			jRole = j.FDBData.Roles[0].Role
+			jKey = j.FDBData.Roles[0].Role
 		}
-
-		iKey = iRole + iKey
-		jKey = jRole + jKey
 	case SortClass:
-		iKey = i.FDBData.Class + iKey
-		jKey = j.FDBData.Class + jKey
+		iKey = i.FDBData.Class
+		jKey = j.FDBData.Class
 	case SortUptime:
 		return i.FDBData.Uptime < j.FDBData.Uptime
 	case SortSelected:
 		if !i.Metadata.Selected {
-			iKey = "_" + iKey
+			iKey = "_"
 		}
 
 		if !j.Metadata.Selected {
-			jKey = "_" + jKey
+			jKey = "_"
 		}
 	case SortExcluded:
 		if !i.FDBData.Excluded {
-			iKey = "_" + iKey
+			iKey = "_"
 		}
 
 		if !j.FDBData.Excluded {
-			jKey = "_" + jKey
+			jKey = "_"
 		}
 	}
 
-	return strings.Compare(iKey, jKey) < 0
+	comp := strings.Compare(iKey, jKey)
+
+	if comp < 0 {
+		return true
+	} else if comp > 0 {
+		return false
+	} else {
+		iAddrPort, _ := netip.ParseAddrPort(i.FDBData.Address)
+		jAddrPort, _ := netip.ParseAddrPort(j.FDBData.Address)
+
+		return iAddrPort.Compare(jAddrPort) < 0
+	}
 }
