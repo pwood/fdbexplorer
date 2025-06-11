@@ -75,6 +75,18 @@ var ColumnIPAddressPort = components.ColumnImpl[process.Process]{
 	ColorFn: ProcessColour,
 }
 
+var ColumnTLS = components.ColumnImpl[process.Process]{
+	ColName: "TLS",
+	DataFn: func(p process.Process) string {
+		if p.FDBData.TLS {
+			return "✓"
+		}
+
+		return ""
+	},
+	ColorFn: ProcessColour,
+}
+
 var ColumnStatus = components.ColumnImpl[process.Process]{
 	ColName: "Status",
 	DataFn: func(pd process.Process) string {

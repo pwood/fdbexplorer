@@ -86,6 +86,17 @@ func (m *Main) updateFromDS() {
 		return
 	}
 
+	newProcesses := map[string]fdb.Process{}
+
+	for id, p := range root.Cluster.Processes {
+		newAddress, tls := strings.CutSuffix(p.Address, ":tls")
+		p.Address = newAddress
+		p.TLS = tls
+		newProcesses[id] = p
+	}
+
+	root.Cluster.Processes = newProcesses
+
 	u := process.Update{
 		Root: root,
 	}
@@ -147,7 +158,7 @@ func (m *Main) Run() {
 	m.processStore = process.NewStore(m.sorter.Sort)
 
 	localityDataContent := components.NewDataTable[process.Process](
-		[]components.ColumnDef[process.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnStatus, views.ColumnMachine, views.ColumnLocality, views.ColumnClass, views.ColumnRoles, views.ColumnVersion, views.ColumnUptime})
+		[]components.ColumnDef[process.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnTLS, views.ColumnStatus, views.ColumnMachine, views.ColumnLocality, views.ColumnClass, views.ColumnRoles, views.ColumnVersion, views.ColumnUptime})
 
 	m.processStore.AddNotifiable(localityDataContent.Update, views.All)
 

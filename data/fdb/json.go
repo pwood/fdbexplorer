@@ -136,6 +136,7 @@ type Bytes struct {
 
 type Process struct {
 	Address          string    `json:"address"`
+	TLS              bool      `json:"-"`
 	Degraded         bool      `json:"degraded"`
 	Excluded         bool      `json:"excluded"`
 	Locality         Locality  `json:"locality"`
