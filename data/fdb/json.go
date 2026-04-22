@@ -5,6 +5,7 @@ type Root struct {
 }
 
 type Cluster struct {
+	Clients           Clients            `json:"clients"`
 	Processes         map[string]Process `json:"processes"`
 	DatabaseAvailable bool               `json:"database_available"`
 	DatabaseLockState DatabaseLockState  `json:"database_lock_state"`
@@ -13,6 +14,23 @@ type Cluster struct {
 	RecoveryState     RecoveryState      `json:"recovery_state"`
 	Data              Data               `json:"data"`
 	Layers            Layers             `json:"layers"`
+}
+
+type Clients struct {
+	Count             int                 `json:"count"`
+	SupportedVersions []SupportedVersions `json:"supported_versions"`
+}
+
+type SupportedVersions struct {
+	Count            int `json:"count"`
+	ClientVersion    string
+	ProtocolVersion  string
+	ConnectedClients []ConnectedClient
+}
+
+type ConnectedClient struct {
+	Address string `json:"address"`
+	TLS     bool   `json:"-"`
 }
 
 type DatabaseLockState struct {

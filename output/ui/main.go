@@ -3,19 +3,19 @@ package ui
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/pwood/fdbexplorer/data/fdb"
 	"github.com/pwood/fdbexplorer/input"
 	"github.com/pwood/fdbexplorer/output/ui/components"
 	"github.com/pwood/fdbexplorer/output/ui/data/process"
+	"github.com/pwood/fdbexplorer/output/ui/panels"
 	"github.com/pwood/fdbexplorer/output/ui/views"
 	"github.com/rivo/tview"
-	"os"
-	"strings"
-	"time"
 )
-
-type UpdatableViews func(dsu process.Update)
 
 func New(ds input.StatusProvider) *Main {
 	main := &Main{ds: ds, upCh: make(chan struct{})}
@@ -37,7 +37,7 @@ type Main struct {
 	sorter    *process.SortControl
 
 	processStore *process.Store
-	updatable    []UpdatableViews
+	panels       []panels.Panel
 	rawJson      []byte
 
 	statusText *tview.TextView
@@ -124,8 +124,9 @@ func (m *Main) updateFromDS() {
 	m.updateStatus(msg, StatusSuccess)
 
 	m.app.QueueUpdateDraw(func() {
-		for _, uFn := range m.updatable {
-			uFn(u)
+		m.processStore.Update(u)
+		for _, p := range m.panels {
+			p.Update(u)
 		}
 	})
 }
@@ -153,137 +154,27 @@ func (m *Main) snapshotData() (string, error) {
 
 func (m *Main) Run() {
 	m.interval = &views.IntervalControl{}
-
 	m.sorter = &process.SortControl{}
 	m.processStore = process.NewStore(m.sorter.Sort)
 
-	localityDataContent := components.NewDataTable[process.Process](
-		[]components.ColumnDef[process.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnTLS, views.ColumnStatus, views.ColumnMachine, views.ColumnLocality, views.ColumnClass, views.ColumnRoles, views.ColumnVersion, views.ColumnUptime})
+	locality := panels.NewLocality(m.processStore)
+	usage := panels.NewUsage(m.processStore)
+	storage := panels.NewStorage(m.processStore)
+	logs := panels.NewLogs(m.processStore)
+	backups := panels.NewBackups()
+	drBackups := panels.NewDRBackups()
+	clusterHealth := panels.NewClusterHealth()
+	clusterWorkload := panels.NewClusterWorkload()
 
-	m.processStore.AddNotifiable(localityDataContent.Update, views.All)
-
-	usageDataContent := components.NewDataTable[process.Process](
-		[]components.ColumnDef[process.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnRoles, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnNetworkActivity, views.ColumnDiskUsage, views.ColumnDiskActivity})
-
-	m.processStore.AddNotifiable(usageDataContent.Update, views.All)
-
-	storageDataContent := components.NewDataTable[process.Process](
-		[]components.ColumnDef[process.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnDiskUsage, views.ColumnDiskActivity, views.ColumnKVStorage, views.ColumnStorageDurabilityRate, views.ColumnStorageLag, views.ColumnStorageTotalQueries})
-
-	m.processStore.AddNotifiable(storageDataContent.Update, views.RoleMatch("storage"))
-
-	logDataContent := components.NewDataTable[process.Process](
-		[]components.ColumnDef[process.Process]{views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnDiskUsage, views.ColumnDiskActivity, views.ColumnLogQueueLength, views.ColumnLogDurabilityRate, views.ColumnLogQueueStorage})
-
-	m.processStore.AddNotifiable(logDataContent.Update, views.RoleMatch("log"))
-
-	clusterHealthContent := components.NewStatsGrid([][]components.ColumnDef[views.ClusterHealth]{
-		{views.StatClusterHealth, views.StatRebalanceQueued},
-		{views.StatReplicasRemaining, views.StatRebalanceInflight},
-		{views.StatRecoveryState, views.StatEmpty},
-		{views.StatRecoveryDescription, views.StatDatabaseLocked},
-	})
-
-	clusterStatsContent := components.NewStatsGrid([][]components.ColumnDef[views.ClusterStats]{
-		{views.StatTxStarted, views.StatReads},
-		{views.StatTxCommitted, views.StatWrites},
-		{views.StatTxConflicted, views.StatBytesRead},
-		{views.StatTxRejected, views.StatBytesWritten},
-	})
-
-	backupInstancesContent := components.NewDataTable[fdb.BackupInstance](
-		[]components.ColumnDef[fdb.BackupInstance]{views.ColumnBackupInstanceId, views.ColumnBackupInstanceVersion, views.ColumnBackupInstanceConfiguredWorkers, views.ColumnBackupInstanceUsedMemory, views.ColumnBackupInstanceRecentTransfer, views.ColumnBackupInstanceRecentOperations})
-
-	backupTagsContent := components.NewDataTable[fdb.BackupTag](
-		[]components.ColumnDef[fdb.BackupTag]{views.ColumnBackupTagId, views.ColumnBackupStatus, views.ColumnBackupRunning, views.ColumnBackupRestorable, views.ColumnBackupSecondsBehind, views.ColumnBackupRestorableVersion, views.ColumnBackupRangeBytes, views.ColumnBackupLogBytes})
-
-	drBackupInstanceColumns := []components.ColumnDef[fdb.DRBackupInstance]{views.ColumnDRBackupInstanceId, views.ColumnDRBackupInstanceLastUpdated, views.ColumnDRBackupInstanceProcessCPU, views.ColumnDRBackupInstanceMemoryUsage, views.ColumnDRBackupInstanceResidentSize, views.ColumnDRBackupInstanceVersion}
-	drBackupTagColumns := []components.ColumnDef[fdb.DRBackupTag]{views.ColumnDRBackupTagId, views.ColumnDRBackupTagRunning, views.ColumnDRBackupTagRestorable, views.ColumnDRBackupTagSecondsBehind, views.ColumnDRBackupTagState, views.ColumnDRBackupTagRangeBytes, views.ColumnDRBackupTagLogBytes, views.ColumnDRBackupTagMutationStream}
-
-	drBackupInstancesContent := components.NewDataTable[fdb.DRBackupInstance](drBackupInstanceColumns)
-	drBackupTagsContent := components.NewDataTable[fdb.DRBackupTag](drBackupTagColumns)
-	drBackupDestInstancesContent := components.NewDataTable[fdb.DRBackupInstance](drBackupInstanceColumns)
-	drBackupDestTagsContent := components.NewDataTable[fdb.DRBackupTag](drBackupTagColumns)
-
-	m.updatable = []UpdatableViews{
-		m.processStore.Update,
-		views.UpdateClusterHealth(clusterHealthContent.Update),
-		views.UpdateClusterStats(clusterStatsContent.Update),
-		views.UpdateBackupInstances(backupInstancesContent.Update),
-		views.UpdateBackupTags(backupTagsContent.Update),
-		views.UpdateDrBackupInstances(drBackupInstancesContent.Update),
-		views.UpdateDrBackupTags(drBackupTagsContent.Update),
-		views.UpdateDrBackupDestInstances(drBackupDestInstancesContent.Update),
-		views.UpdateDrBackupDestTags(drBackupDestTagsContent.Update),
-	}
-
-	processDataInput := func(table *tview.Table, content *components.DataTable[process.Process]) func(event *tcell.EventKey) *tcell.EventKey {
-		return func(event *tcell.EventKey) *tcell.EventKey {
-			switch event.Key() {
-			case tcell.KeyRune:
-				switch event.Rune() {
-				case ' ':
-					row, _ := table.GetSelection()
-					content.Get(row).Metadata.ToggleSelected()
-					m.processStore.Sort()
-					return nil
-				}
-			}
-
-			return event
-		}
-	}
-
-	locality := tview.NewTable().SetContent(localityDataContent).SetFixed(1, 0).SetSelectable(true, false)
-	locality.SetInputCapture(processDataInput(locality, localityDataContent))
-	usage := tview.NewTable().SetContent(usageDataContent).SetFixed(1, 0).SetSelectable(true, false)
-	usage.SetInputCapture(processDataInput(usage, usageDataContent))
-	storage := tview.NewTable().SetContent(storageDataContent).SetFixed(1, 0).SetSelectable(true, false)
-	storage.SetInputCapture(processDataInput(storage, storageDataContent))
-	logs := tview.NewTable().SetContent(logDataContent).SetFixed(1, 0).SetSelectable(true, false)
-	logs.SetInputCapture(processDataInput(logs, logDataContent))
-
-	backupInstances := tview.NewTable().SetContent(backupInstancesContent).SetFixed(1, 0).SetSelectable(false, false)
-	backupTags := tview.NewTable().SetContent(backupTagsContent).SetFixed(1, 0).SetSelectable(false, false)
-
-	backupFlex := tview.NewFlex()
-	backupFlex.SetDirection(tview.FlexRow)
-	backupFlex.AddItem(backupInstances, 0, 1, false)
-	backupFlex.AddItem(backupTags, 0, 1, false)
-
-	drBackupInstances := tview.NewTable().SetContent(drBackupInstancesContent).SetFixed(1, 0).SetSelectable(false, false)
-	drBackupTags := tview.NewTable().SetContent(drBackupTagsContent).SetFixed(1, 0).SetSelectable(false, false)
-	drBackupDestInstances := tview.NewTable().SetContent(drBackupDestInstancesContent).SetFixed(1, 0).SetSelectable(false, false)
-	drBackupDestTags := tview.NewTable().SetContent(drBackupDestTagsContent).SetFixed(1, 0).SetSelectable(false, false)
-
-	drFlex := tview.NewFlex()
-	drFlex.SetDirection(tview.FlexRow)
-	drFlex.AddItem(drBackupInstances, 0, 2, false)
-	drFlex.AddItem(drBackupTags, 0, 1, false)
-	drFlex.SetBorder(true)
-	drFlex.SetTitle("'Source' (Local) Cluster")
-	drFlex.SetTitleColor(tcell.ColorAqua)
-
-	drDestFelx := tview.NewFlex()
-	drDestFelx.SetDirection(tview.FlexRow)
-	drDestFelx.AddItem(drBackupDestInstances, 0, 2, false)
-	drDestFelx.AddItem(drBackupDestTags, 0, 1, false)
-	drDestFelx.SetBorder(true)
-	drDestFelx.SetTitle("'Destination' (Remote) Cluster")
-	drDestFelx.SetTitleColor(tcell.ColorAqua)
-
-	drContainer := tview.NewFlex()
-	drContainer.SetDirection(tview.FlexRow)
-	drContainer.AddItem(drFlex, 0, 1, false)
-	drContainer.AddItem(drDestFelx, 0, 1, false)
+	m.panels = []panels.Panel{backups, drBackups, clusterHealth, clusterWorkload}
 
 	m.slideShow = components.NewSlideShow()
-	m.slideShow.Add("Locality", locality)
-	m.slideShow.Add("Usage Overview", usage)
-	m.slideShow.Add("Storage Processes", storage)
-	m.slideShow.Add("Log Processes", logs)
-	m.slideShow.Add("Backups", backupFlex)
-	m.slideShow.Add("DR Backups", drContainer)
+	m.slideShow.Add("Locality", locality.Root())
+	m.slideShow.Add("Usage Overview", usage.Root())
+	m.slideShow.Add("Storage Processes", storage.Root())
+	m.slideShow.Add("Log Processes", logs.Root())
+	m.slideShow.Add("Backups", backups.Root())
+	m.slideShow.Add("DR Backups", drBackups.Root())
 
 	m.statusText = tview.NewTextView()
 	m.statusText.SetTextAlign(tview.AlignRight)
@@ -294,27 +185,15 @@ func (m *Main) Run() {
 	bottom.AddItem(tview.NewTable().SetContent(&views.HelpKeys{Sorter: m.sorter, Interval: m.interval, HasEM: m.em != nil}).SetSelectable(false, false), 0, 1, false)
 	bottom.AddItem(m.statusText, 0, 1, false)
 
-	clusterHealthFlex := tview.NewFlex()
-	clusterHealthFlex.SetDirection(tview.FlexRow)
-	clusterHealthFlex.SetBorderPadding(0, 0, 1, 1)
-	clusterHealthFlex.AddItem(tview.NewTextView().SetTextAlign(tview.AlignCenter).SetText("Cluster Health").SetTextColor(tcell.ColorAqua), 1, 1, false)
-	clusterHealthFlex.AddItem(tview.NewTable().SetContent(clusterHealthContent).SetSelectable(false, false), 0, 1, false)
-
-	clusterWorkloadFlex := tview.NewFlex()
-	clusterWorkloadFlex.SetDirection(tview.FlexRow)
-	clusterWorkloadFlex.SetBorderPadding(0, 0, 1, 1)
-	clusterWorkloadFlex.AddItem(tview.NewTextView().SetTextAlign(tview.AlignCenter).SetText("Cluster Workload").SetTextColor(tcell.ColorAqua), 1, 1, false)
-	clusterWorkloadFlex.AddItem(tview.NewTable().SetContent(clusterStatsContent).SetSelectable(false, false), 0, 1, false)
-
 	grid := tview.NewGrid().SetRows(5, 0, 1).SetColumns(0, 0, 0).SetBorders(true)
-	grid.AddItem(clusterHealthFlex, 0, 0, 1, 2, 0, 0, false)
-	grid.AddItem(clusterWorkloadFlex, 0, 2, 1, 1, 0, 0, false)
+	grid.AddItem(clusterHealth.Root(), 0, 0, 1, 2, 0, 0, false)
+	grid.AddItem(clusterWorkload.Root(), 0, 2, 1, 1, 0, 0, false)
 	grid.AddItem(m.slideShow, 1, 0, 1, 3, 0, 0, true)
 	grid.AddItem(bottom, 2, 0, 1, 3, 0, 0, false)
 
 	grid.SetInputCapture(m.rootAction)
 
-	m.app = tview.NewApplication().SetRoot(grid, true).SetFocus(locality)
+	m.app = tview.NewApplication().SetRoot(grid, true).SetFocus(locality.Root())
 
 	go m.runData()
 
