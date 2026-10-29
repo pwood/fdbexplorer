@@ -14,6 +14,12 @@ type Cluster struct {
 	RecoveryState     RecoveryState      `json:"recovery_state"`
 	Data              Data               `json:"data"`
 	Layers            Layers             `json:"layers"`
+	Configuration     Configuration      `json:"configuration"`
+}
+
+type Configuration struct {
+	RedundancyMode string `json:"redundancy_mode"`
+	StorageEngine  string `json:"storage_engine"`
 }
 
 type Clients struct {

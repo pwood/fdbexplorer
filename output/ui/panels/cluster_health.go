@@ -17,7 +17,7 @@ func NewClusterHealth() *ClusterHealthPanel {
 	content := components.NewStatsGrid([][]components.ColumnDef[views.ClusterHealth]{
 		{views.StatClusterHealth, views.StatRebalanceQueued},
 		{views.StatReplicasRemaining, views.StatRebalanceInflight},
-		{views.StatRecoveryState, views.StatEmpty},
+		{views.StatRecoveryState, views.StatConfiguration},
 		{views.StatRecoveryDescription, views.StatDatabaseLocked},
 	})
 

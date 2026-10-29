@@ -1,6 +1,8 @@
 package panels
 
 import (
+	"slices"
+
 	"github.com/pwood/fdbexplorer/output/ui/components"
 	"github.com/pwood/fdbexplorer/output/ui/data/process"
 	"github.com/pwood/fdbexplorer/output/ui/views"
@@ -12,13 +14,18 @@ type LogsPanel struct {
 	content *components.DataTable[process.Process]
 }
 
-func NewLogs(store *process.Store) *LogsPanel {
+func NewLogs(store *process.Store, localities []components.ColumnDef[process.Process]) *LogsPanel {
 	content := components.NewDataTable[process.Process](
-		[]components.ColumnDef[process.Process]{
-			views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnCPUActivity,
-			views.ColumnRAMUsage, views.ColumnDiskUsage, views.ColumnDiskActivity,
-			views.ColumnLogQueueLength, views.ColumnLogDurabilityRate, views.ColumnLogQueueStorage,
-		})
+		slices.Concat(
+			[]components.ColumnDef[process.Process]{
+				views.ColumnSelected, views.ColumnIPAddressPort,
+			},
+			localities,
+			[]components.ColumnDef[process.Process]{
+				views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnDiskUsage, views.ColumnDiskActivity,
+				views.ColumnLogQueueLength, views.ColumnLogDurabilityRate, views.ColumnLogQueueStorage,
+			},
+		))
 
 	store.AddNotifiable(content.Update, views.RoleMatch("log"))
 

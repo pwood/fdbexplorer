@@ -11,6 +11,7 @@ import (
 	"github.com/pwood/fdbexplorer/data/fdb"
 	"github.com/pwood/fdbexplorer/input"
 	"github.com/pwood/fdbexplorer/output/ui/components"
+	"github.com/pwood/fdbexplorer/output/ui/config"
 	"github.com/pwood/fdbexplorer/output/ui/data/process"
 	"github.com/pwood/fdbexplorer/output/ui/panels"
 	"github.com/pwood/fdbexplorer/output/ui/views"
@@ -153,14 +154,28 @@ func (m *Main) snapshotData() (string, error) {
 }
 
 func (m *Main) Run() {
+	display, err := config.LoadDisplay()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load display configuration: %s\n", err.Error())
+		os.Exit(1)
+	}
+
+	var localityColumns []components.ColumnDef[process.Process]
+	var localitySorts []process.LocalitySort
+
+	for _, c := range display.LocalityColumns() {
+		localityColumns = append(localityColumns, views.ColumnLocalityKey(c.Title, c.Name))
+		localitySorts = append(localitySorts, process.LocalitySort{Title: c.Title, Key: c.Name})
+	}
+
 	m.interval = &views.IntervalControl{}
-	m.sorter = &process.SortControl{}
+	m.sorter = &process.SortControl{Localities: localitySorts}
 	m.processStore = process.NewStore(m.sorter.Sort)
 
-	locality := panels.NewLocality(m.processStore)
-	usage := panels.NewUsage(m.processStore)
-	storage := panels.NewStorage(m.processStore)
-	logs := panels.NewLogs(m.processStore)
+	locality := panels.NewLocality(m.processStore, localityColumns)
+	usage := panels.NewUsage(m.processStore, localityColumns)
+	storage := panels.NewStorage(m.processStore, localityColumns)
+	logs := panels.NewLogs(m.processStore, localityColumns)
 	backups := panels.NewBackups()
 	drBackups := panels.NewDRBackups()
 	clusterHealth := panels.NewClusterHealth()

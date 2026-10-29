@@ -113,20 +113,14 @@ var ColumnStatus = components.ColumnImpl[process.Process]{
 	ColorFn: ProcessColour,
 }
 
-var ColumnMachine = components.ColumnImpl[process.Process]{
-	ColName: "Machine",
-	DataFn: func(pd process.Process) string {
-		return pd.FDBData.Locality[fdb.LocalityMachineID]
-	},
-	ColorFn: ProcessColour,
-}
-
-var ColumnLocality = components.ColumnImpl[process.Process]{
-	ColName: "Locality",
-	DataFn: func(pd process.Process) string {
-		return fmt.Sprintf("%s / %s", pd.FDBData.Locality[fdb.LocalityDataHall], pd.FDBData.Locality[fdb.LocalityDataCenter])
-	},
-	ColorFn: ProcessColour,
+func ColumnLocalityKey(title, key string) components.ColumnImpl[process.Process] {
+	return components.ColumnImpl[process.Process]{
+		ColName: title,
+		DataFn: func(pd process.Process) string {
+			return pd.FDBData.Locality[key]
+		},
+		ColorFn: ProcessColour,
+	}
 }
 
 var ColumnClass = components.ColumnImpl[process.Process]{

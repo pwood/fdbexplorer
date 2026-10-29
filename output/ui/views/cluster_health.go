@@ -19,6 +19,9 @@ type ClusterHealth struct {
 	RecoveryDescription string
 
 	DatabaseLocked bool
+
+	RedundancyMode string
+	StorageEngine  string
 }
 
 func UpdateClusterHealth(f func(ClusterHealth)) func(process.Update) {
@@ -32,6 +35,8 @@ func UpdateClusterHealth(f func(ClusterHealth)) func(process.Update) {
 			RecoveryState:       Titlify(dsu.Root.Cluster.RecoveryState.Name),
 			RecoveryDescription: dsu.Root.Cluster.RecoveryState.Description,
 			DatabaseLocked:      dsu.Root.Cluster.DatabaseLockState.Locked,
+			RedundancyMode:      dsu.Root.Cluster.Configuration.RedundancyMode,
+			StorageEngine:       dsu.Root.Cluster.Configuration.StorageEngine,
 		})
 	}
 }
@@ -96,6 +101,13 @@ var StatDatabaseLocked = components.ColumnImpl[ClusterHealth]{
 		} else {
 			return tcell.ColorWhite
 		}
+	},
+}
+
+var StatConfiguration = components.ColumnImpl[ClusterHealth]{
+	ColName: "Configuration",
+	DataFn: func(h ClusterHealth) string {
+		return fmt.Sprintf("%s / %s", h.RedundancyMode, h.StorageEngine)
 	},
 }
 

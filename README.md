@@ -108,6 +108,27 @@ It can then be read by using the following:
 You do not have to use `fdbexplorer` to publish the contents of `status json`, however the endpoint you provided must
 return a `200` and a `Content-Type` of `application/json`.
 
+### Display configuration
+
+The process views show columns from each process's locality. By default these are `Machine` (`machineid`),
+`Data Hall` (`data_hall`) and `DC` (`dcid`). Additional locality columns can be added in `fdbexplorer/display.json`
+within your user configuration directory, these are displayed before the default columns. `name` is the key in the
+process locality, `title` is the column header.
+
+* Linux: `$XDG_CONFIG_HOME/fdbexplorer/display.json`, or `~/.config/fdbexplorer/display.json` if unset
+* macOS: `~/Library/Application Support/fdbexplorer/display.json`
+
+```json
+{
+  "columns": [
+    { "title": "DNS", "name": "dns_name" },
+    { "title": "Zone", "name": "zoneid" }
+  ]
+}
+```
+
+All locality columns, including custom ones, can be sorted on by cycling through the sort options with `F1`.
+
 ## Developing
 
 ### FoundationDB Client Library

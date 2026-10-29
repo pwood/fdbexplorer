@@ -1,6 +1,8 @@
 package panels
 
 import (
+	"slices"
+
 	"github.com/pwood/fdbexplorer/output/ui/components"
 	"github.com/pwood/fdbexplorer/output/ui/data/process"
 	"github.com/pwood/fdbexplorer/output/ui/views"
@@ -12,14 +14,19 @@ type StoragePanel struct {
 	content *components.DataTable[process.Process]
 }
 
-func NewStorage(store *process.Store) *StoragePanel {
+func NewStorage(store *process.Store, localities []components.ColumnDef[process.Process]) *StoragePanel {
 	content := components.NewDataTable[process.Process](
-		[]components.ColumnDef[process.Process]{
-			views.ColumnSelected, views.ColumnIPAddressPort, views.ColumnCPUActivity,
-			views.ColumnRAMUsage, views.ColumnDiskUsage, views.ColumnDiskActivity,
-			views.ColumnKVStorage, views.ColumnStorageDurabilityRate,
-			views.ColumnStorageLag, views.ColumnStorageTotalQueries,
-		})
+		slices.Concat(
+			[]components.ColumnDef[process.Process]{
+				views.ColumnSelected, views.ColumnIPAddressPort,
+			},
+			localities,
+			[]components.ColumnDef[process.Process]{
+				views.ColumnCPUActivity, views.ColumnRAMUsage, views.ColumnDiskUsage, views.ColumnDiskActivity,
+				views.ColumnKVStorage, views.ColumnStorageDurabilityRate,
+				views.ColumnStorageLag, views.ColumnStorageTotalQueries,
+			},
+		))
 
 	store.AddNotifiable(content.Update, views.RoleMatch("storage"))
 

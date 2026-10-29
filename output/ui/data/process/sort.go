@@ -5,15 +5,30 @@ import (
 	"strings"
 )
 
+type LocalitySort struct {
+	Title string
+	Key   string
+}
+
 type SortControl struct {
-	i int
+	i          int
+	Localities []LocalitySort
 }
 
 func (p *SortControl) Next() {
 	p.i++
-	if p.i > SortExcluded {
+	if p.i > SortExcluded+len(p.Localities) {
 		p.i = 0
 	}
+}
+
+func (p *SortControl) locality() (LocalitySort, bool) {
+	idx := p.i - SortExcluded - 1
+	if idx < 0 || idx >= len(p.Localities) {
+		return LocalitySort{}, false
+	}
+
+	return p.Localities[idx], true
 }
 
 const (
@@ -40,6 +55,9 @@ func (p *SortControl) SortName() string {
 	case SortExcluded:
 		return "Excluded"
 	default:
+		if l, ok := p.locality(); ok {
+			return l.Title
+		}
 		return "Unknown"
 	}
 }
@@ -77,6 +95,11 @@ func (p *SortControl) Sort(i Process, j Process) bool {
 
 		if !j.FDBData.Excluded {
 			jKey = "_"
+		}
+	default:
+		if l, ok := p.locality(); ok {
+			iKey = i.FDBData.Locality[l.Key]
+			jKey = j.FDBData.Locality[l.Key]
 		}
 	}
 
